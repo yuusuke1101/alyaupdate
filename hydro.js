@@ -4034,8 +4034,8 @@ switch(command) {
     const axios = require('axios');
     const fs = require('fs');
 
-    let url = "https://raw.githubusercontent.com/NAMA/REPO/main/main.js"; 
-    let path = "./main.js";
+    let url = "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/hydro.js";
+    let path = "./hydro.js";
 
     m.reply("🔄 Mengambil update terbaru...");
 
@@ -41185,3 +41185,4 @@ function autoClearSession() {
 }
 
 autoClearSession();
+
