@@ -4026,25 +4026,49 @@ if (isBlacklisted(m.sender)) {
     return; 
 }
 
-
 switch(command) {
 	case 'update': {
     if (!Ahmad) return replytolak(mess.only.owner)
 
     const axios = require('axios');
     const fs = require('fs');
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-    let url = "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/hydro.js";
-    let path = "./hydro.js";
+    const files = [
+        { url: "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/hydro.js", path: "./hydro.js" },
+        { url: "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/setting.js", path: "./setting.js" },
+        { url: "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/lib/listmenu.js", path: "./lib/listmenu.js" }
+    ];
 
-    m.reply("🔄 Mengambil update terbaru...");
+    await m.reply("🔄 Memulai update...\n");
 
     try {
-        const { data } = await axios.get(url);
+        let total = files.length;
+        let count = 1;
 
-        fs.writeFileSync(path, data);
+        for (let file of files) {
 
-        m.reply("✅ Update selesai! Bot akan restart...");
+            await hydro.sendMessage(m.chat, {
+                text: `➡ Mengupdate *${file.path}*`
+            });
+
+            const { data } = await axios.get(file.url);
+            fs.writeFileSync(file.path, data);
+
+            let percent = Math.floor((count / total) * 100);
+
+            await hydro.sendMessage(m.chat, {
+                text: `Progress: ${count}/${total} (${percent}%)`
+            });
+
+            count++;
+        }
+
+        await hydro.sendMessage(m.chat, {
+            text: "✅ Semua file berhasil diupdate!\n🔁 Bot akan restart dalam 1 detik..."
+        });
+
+        await sleep(1200);
 
         process.exit();
 
@@ -41185,4 +41209,3 @@ function autoClearSession() {
 }
 
 autoClearSession();
-
