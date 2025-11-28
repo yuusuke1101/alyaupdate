@@ -4036,7 +4036,7 @@ switch(command) {
 
     const files = [
         { url: "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/hydro.js", path: "./hydro.js" },
-        { url: "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/setting.js", path: "./setting.js" },
+        { url: "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/settings.js", path: "./settings.js" },
         { url: "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/lib/listmenu.js", path: "./lib/listmenu.js" }
     ];
 
