@@ -4027,6 +4027,56 @@ if (isBlacklisted(m.sender)) {
 }
 
 switch(command) {
+	case 'uhd': {
+    if (!quoted || !/image/.test(mime))
+        return replyhydro(`📸 Kirim atau reply gambar dengan caption *${command}* untuk meningkatkan kualitas.`);
+
+    hydro.sendMessage(m.chat, { react: { text: `⏱️`, key: m.key } });
+
+    try {
+        const axios = require('axios');
+        const fs = require('fs');
+        const FormData = require('form-data');
+
+        let mediaPath = await hydro.downloadAndSaveMediaMessage(m.quoted, './temp/');
+
+        let form = new FormData();
+        form.append('reqtype', 'fileupload');
+        form.append('fileToUpload', fs.createReadStream(mediaPath));
+
+        let upload = await axios.post('https://catbox.moe/user/api.php', form, {
+            headers: form.getHeaders()
+        });
+
+        let fileUrl = upload.data;
+        if (!fileUrl.includes("https://")) {
+            fs.unlinkSync(mediaPath);
+            return m.reply("❌ Upload gambar gagal!");
+        }
+
+        let apiUrl = `https://api.elrayyxml.web.id/api/tools/upscale?url=${encodeURIComponent(fileUrl)}&resolusi=16`;
+
+        let res = await axios.get(apiUrl, {
+            responseType: "arraybuffer"
+        });
+
+        await hydro.sendMessage(
+            m.chat,
+            {
+                image: res.data,
+                caption: `✅ *UHD Upscale Berhasil!*\nResolusi gambar meningkat 16x lebih jernih.`
+            },
+            { quoted: m }
+        );
+
+        fs.unlinkSync(mediaPath);
+
+    } catch (err) {
+        console.error(err);
+        m.reply('❌ Terjadi kesalahan saat memproses gambar UHD!');
+    }
+}
+break;
 	case 'update': {
     if (!Ahmad) return replytolak(mess.only.owner)
 
@@ -4040,40 +4090,35 @@ switch(command) {
         { url: "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/lib/listmenu.js", path: "./lib/listmenu.js" }
     ];
 
-    await m.reply("🔄 Memulai update...\n");
-
     try {
+
+        await replyhydro(`🔄 *Memulai update ${global.botname}...*`)
+
         let total = files.length;
         let count = 1;
 
         for (let file of files) {
 
-            await hydro.sendMessage(m.chat, {
-                text: `➡ Mengupdate *${file.path}*`
-            });
+            await replyhydro(`➡ Mengupdate *${file.path}*...`);
 
             const { data } = await axios.get(file.url);
             fs.writeFileSync(file.path, data);
 
             let percent = Math.floor((count / total) * 100);
 
-            await hydro.sendMessage(m.chat, {
-                text: `Progress: ${count}/${total} (${percent}%)`
-            });
+            await replyhydro(`Progress: ${count}/${total} (${percent}%)`);
 
             count++;
+            await sleep(500); // biar lebih smooth
         }
+        await replyhydro(`✅ *Semua file berhasil diperbarui!*\n🔁 Restarting bot...`);
+        await replyhydro(`Done ✅`);
 
-        await hydro.sendMessage(m.chat, {
-            text: "✅ Semua file berhasil diupdate!\n🔁 Bot akan restart dalam 1 detik..."
-        });
-
-        await sleep(1200);
-
+        await sleep(2000);
         process.exit();
 
     } catch (err) {
-        m.reply("❌ Gagal update: " + err.message);
+        replyhydro("❌ Gagal update: " + err.message);
     }
 }
 break;
@@ -4083,9 +4128,9 @@ case 'scalya': {
         const fetch = require('node-fetch');
         const cheerio = require('cheerio');
 
-        const mediafireLink = 'https://www.mediafire.com/file/z8npg6uggkfi96k/AlyaV5.zip/file';
+        const mediafireLink = 'https://www.mediafire.com/file/qmsuw2507b5tsyc/AlyaV5_new_Update.zip/file';
 
-        m.reply('⏳ tunggu ya Sedang mengambil file Alya V5...');
+        await hydro.sendMessage(m.chat, { react: { text: "⏱️", key: m.key } });
 
         const { data } = await axios.get(mediafireLink);
         const $ = cheerio.load(data);
@@ -4102,7 +4147,7 @@ case 'scalya': {
             fileName: fileName,
             mimetype: 'application/zip'
         }, { quoted: m });
-
+		hydro.sendMessage(m.chat, { react: { text: "✅", key: m.key } });
     } catch (err) {
         console.log(err);
         m.reply('❌ Terjadi kesalahan saat mengirim file AlyaV5.');
@@ -4767,30 +4812,27 @@ case 'dl': {
 
         const result = res.result;
 
-        let nowm = result.medias.find(m => 
-            /no watermark/i.test(m.quality)
-        );
+        // Cari media utama: prioritas no watermark
+        let media = result.medias.find(m => /no watermark/i.test(m.quality));
+        if (!media) media = result.medias[0]; // fallback media pertama
 
-        if (!nowm) {
-            nowm = result.medias.find(m => m.type === "video");
-        }
-
-        if (!nowm) return m.reply("❌ Media tidak ditemukan!");
+        if (!media) return m.reply("❌ Media tidak ditemukan!");
 
         let caption = `*AIO Downloader*\n`;
         caption += `• Source: ${result.source}\n`;
-        caption += `• Author: ${result.author}\n`;
-        caption += `• Title: ${result.title}\n`;
-        caption += `• Quality: ${nowm.quality}\n`;
+        caption += `• Author: ${botname}`,
+        caption += `• Title: ${result.title || "-"}\n`;
+        caption += `• Quality: ${media.quality}\n`;
+        caption += `• Duration: ${media.duration ? media.duration + "s" : "-"}\n`;
 
         await hydro.sendMessage(m.chat, { 
-            video: { url: nowm.url },
+            video: { url: media.url },
             caption: caption,
             gifPlayback: false,
             contextInfo: {
                 externalAdReply: {
                     title: result.title || "Downloader",
-                    body: `By ${result.author}`,
+                    body: `By ${botname}`,
                     thumbnailUrl: result.thumbnail,
                     sourceUrl: result.url,
                     mediaType: 1,
@@ -36344,69 +36386,48 @@ case 'yt': {
 }
 break
 case 'fakecall': {
-  if (!text) return replyhydro('Contoh Penggunaan:\n.fakecall Sayang|1.34.22\n\nReply foto untuk foto profil');
+    if (!quoted || !/image/.test(mime))
+        return m.reply(`📸 Reply gambar dengan format:\n.fakecall Ayang|1.53.44`);
 
-  let parts = text.split("|").map(s => s.trim());
-  let nama = parts[0];
-  let durasi = parts[1] || '05:00';
-  let avatar = '';
+    if (!text) 
+        return m.reply(`Format:\n.fakecall Nama|Durasi\n\nContoh:\n.fakecall Ayang|1.53.44`);
 
+    const [nama, durasi] = text.split("|");
+    if (!nama || !durasi) 
+        return m.reply(`Format salah!\nContoh:\n.fakecall Ayang|1.53.44`);
 
-  const uploadTmpFiles = async (filePath) => {
     try {
-      const fs = require('fs');
-      const path = require('path');
-      const FormData = require('form-data');
-      const axios = require('axios');
-      if (!fs.existsSync(filePath)) throw new Error("File tidak ditemukan");
-      const form = new FormData();
-      form.append('file', fs.createReadStream(filePath));
-      const res = await axios.post('https://tmpfiles.org/api/v1/upload', form, {
-        headers: form.getHeaders(),
-        timeout: 120000
-      });
-      if (res.data && res.data.data && res.data.data.url) {
-        const idMatch = res.data.data.url.match(/\/(\d+)(?:\/|$)/);
-        const fileName = path.basename(filePath);
-        if (idMatch) {
-          return `https://tmpfiles.org/dl/${idMatch[1]}/${fileName}`;
-        }
-      }
-      throw new Error("Upload ke tmpfiles.org gagal");
+        m.reply("⏳ *Processing...*");
+
+        let media = await hydro.downloadMediaMessage(quoted);
+
+        const FormData = require('form-data');
+        const axios = require('axios');
+        const form = new FormData();
+        form.append("reqtype", "fileupload");
+        form.append("fileToUpload", media, "image.jpg");
+
+        const catbox = await axios.post("https://catbox.moe/user/api.php", form, {
+            headers: form.getHeaders()
+        });
+
+        let avatar = catbox.data;
+        m.reply("📞 Membuat fakecall...");
+
+        const result = await axios.get(
+            `https://api.zenzxz.my.id/api/maker/fakecall?nama=${encodeURIComponent(nama)}&durasi=${encodeURIComponent(durasi)}&avatar=${encodeURIComponent(avatar)}`,
+            { responseType: "arraybuffer" }
+        );
+
+        await hydro.sendMessage(m.chat, {
+            image: Buffer.from(result.data),
+            caption: `🎭 *Fakecall Generated!*\nNama: ${nama}\nDurasi: ${durasi}`
+        }, { quoted: m });
+
     } catch (err) {
-      console.error("TmpFiles Error:", err.message);
-      return null;
+        console.error(err);
+        m.reply("❌ Error membuat fakecall!");
     }
-  };
-
-  if (!nama) return replyhydro('Nama tidak boleh kosong.');
-
-  try {
-    if (m.quoted && m.quoted.image) {
-      const mediaPath = await hydro.downloadAndSaveMediaMessage(m.quoted);
-      avatar = await uploadTmpFiles(mediaPath);
-      const fs = require('fs');
-      fs.unlinkSync(mediaPath);
-      if (!avatar) avatar = '';
-    }
-  } catch (e) {
-    console.error('Upload avatar error:', e);
-    avatar = '';
-  }
-
-  const apiUrl = `https://velyn.mom/api/maker/calling?name=${encodeURIComponent(nama)}&duration=${encodeURIComponent(durasi)}${avatar ? `&avatar=${encodeURIComponent(avatar)}` : ''}`;
-
-  try {
-    const { data } = await axios.get(apiUrl);
-    if (!data || !data.status || !data.result || !data.result.url) throw new Error('API gagal mengembalikan URL gambar');
-
-    await hydro.sendMessage(m.chat, {
-      image: { url: data.result.url }
-    }, { quoted: m });
-  } catch (err) {
-    console.error('Fakecall generate error:', err);
-    replyhydro('Gagal membuat fakecall.');
-  }
 }
 break;
 case 'ytmp3': {
@@ -37820,7 +37841,7 @@ case 'delsampah':{
 	break 
 case 'iqc': {
   if (!text) return;
-
+await hydro.sendMessage(m.chat, { react: { text: "⏱️", key: m.key } });
   let parts = text.split("|").map(s => s.trim());
   let pesan = parts[0];
   let baterai = 3, sinyal = 3, jam;
@@ -37838,13 +37859,12 @@ case 'iqc': {
     jam = parts[3];
   }
 
-  // Batasi nilai
   if (baterai < 0) baterai = 0;
   if (baterai > 100) baterai = 100;
   if (sinyal < 1) sinyal = 1;
   if (sinyal > 4) sinyal = 4;
 
-  // Default jam = sekarang WIB
+
   if (!jam) {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
@@ -37854,7 +37874,6 @@ case 'iqc': {
     jam = `${h}:${m}`;
   }
 
-  // Validasi jam
   if (jam && !jam.includes(":")) return;
 
   let apiUrl = `https://brat.siputzx.my.id/iphone-quoted?messageText=${encodeURIComponent(pesan)}&carrierName=TELKOMSEL&batteryPercentage=${baterai}&signalStrength=${sinyal}&time=${encodeURIComponent(jam)}`;
@@ -37884,7 +37903,7 @@ case 'quotly':
 case 'qc': {
     if (!text) return reply('Teksnya mana?');
     if (text.length > 10000) return reply("Maximal 10000 karakter!");
-    
+    await hydro.sendMessage(m.chat, { react: { text: "⏱️", key: m.key } });
     const FormData = require("form-data");
     const { fromBuffer } = require("file-type");
 
@@ -40744,25 +40763,26 @@ case 'pinterest': {
     });
 
     try {
-        const { data } = await axios.get(`https://api.elrayyxml.web.id/api/search/pinterest?q=${encodeURIComponent(text)}`);
-        if (!data.status || !data.result || data.result.length === 0) {
+        const { data } = await axios.get(`https://api.ootaizumi.web.id/search/pinterest?query=${encodeURIComponent(text)}`);
+        
+        if (!data.status || !data.result || !data.result.pins || data.result.pins.length === 0) {
             return m.reply('Gambar tidak ditemukan.');
         }
 
-        const pins = data.result; // ambil semua hasil
+        const pins = data.result.pins;
 
         let cards = await Promise.all(pins.map(async (pin, i) => {
-            const media = await prepareWAMessageMedia({ image: { url: pin.images_url } }, { upload: hydro.waUploadToServer });
+            const media = await prepareWAMessageMedia({ image: { url: pin.media.images.orig.url } }, { upload: hydro.waUploadToServer });
 
             return {
                 header: proto.Message.InteractiveMessage.Header.create({
                     ...media,
                     title: `Gambar ${i + 1}`,
-                    subtitle: pin.grid_title || 'Tidak ada judul',
+                    subtitle: pin.title || 'Tidak ada judul',
                     hasMediaAttachment: true
                 }),
                 body: { 
-                    text: `📌 Pin URL: ${pin.pin || 'Tidak ada'}\n🔗 Link: ${pin.link || 'Tidak ada'}\n🆔 ID: ${pin.id}\n📅 Created at: ${pin.created_at || 'Tidak tersedia'}` 
+                    text: `📌 Pin URL: ${pin.pin_url || 'Tidak ada'}\n🆔 ID: ${pin.id}\n👤 Uploader: ${pin.uploader.full_name || pin.uploader.username}\n📄 Description: ${pin.description || 'Tidak tersedia'}` 
                 },
                 nativeFlowMessage: { buttons: [] }
             };
@@ -40788,6 +40808,92 @@ case 'pinterest': {
     } catch (err) {
         console.error(err);
         m.reply('Terjadi kesalahan saat mengambil gambar.');
+    }
+}
+break;
+case 'pin2':
+case 'pinterest2': {
+    if (!text) return m.reply(`Contoh: ${prefix}pin aesthetic girl`);
+
+    await hydro.sendMessage(m.chat, {
+        react: { text: '🔎', key: m.key }
+    });
+
+    try {
+        const api = `https://anabot.my.id/api/search/pinterest?query=${encodeURIComponent(text)}&apikey=freeApikey`;
+        const { data } = await axios.get(api);
+
+        if (!data.success || !data.data || !data.data.result || data.data.result.length === 0) {
+            return m.reply('Hasil pencarian kosong.');
+        }
+
+        const pins = data.data.result;
+
+        // BATAS MAX 15 KARTU
+        const limit = Math.min(pins.length, 15);
+        const selectedPins = pins.slice(0, limit);
+
+        let cards = [];
+
+        for (let i = 0; i < selectedPins.length; i++) {
+            const pin = selectedPins[i];
+
+            const imageUrl =
+                pin.images?.["736x"]?.url ||
+                pin.images?.["345x"]?.url ||
+                pin.images?.["200x"]?.url;
+
+            if (!imageUrl) continue;
+
+            // Upload gambar ke server WA (thumbnail untuk carousel)
+            const media = await prepareWAMessageMedia(
+                { image: { url: imageUrl } },
+                { upload: hydro.waUploadToServer }
+            );
+
+            const card = {
+                header: proto.Message.InteractiveMessage.Header.create({
+                    ...media,
+                    title: `Gambar ${i + 1}`,
+                    subtitle: pin.title || 'Tidak ada judul',
+                    hasMediaAttachment: true
+                }),
+                body: {
+                    text:
+`📌 *ID:* ${pin.id}
+👤 *Uploader:* ${pin.pinner?.username || "Unknown"}
+🏷️ *Bisnis:* ${pin.pinner?.partner?.business_name || "Tidak ada"}
+📄 *Deskripsi:* ${pin.description || "Tidak tersedia"}`
+                },
+                nativeFlowMessage: { buttons: [] }
+            };
+
+            cards.push(card);
+        }
+
+        const msg = generateWAMessageFromContent(
+            m.chat,
+            {
+                viewOnceMessage: {
+                    message: {
+                        interactiveMessage: {
+                            body: { text: `Hasil pencarian Pinterest untuk *${text}* (Max 15)` },
+                            carouselMessage: {
+                                cards: cards,
+                                messageVersion: 1
+                            }
+                        }
+                    }
+                }
+            },
+            { quoted: m }
+        );
+
+        await hydro.relayMessage(m.chat, msg.message, { messageId: msg.key.id });
+
+    } catch (err) {
+        console.error(err);
+        m.reply('Terjadi kesalahan saat mengambil data dari API.');
     }
 }
 break;
