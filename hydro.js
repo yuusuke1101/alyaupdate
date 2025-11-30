@@ -4116,7 +4116,7 @@ break;
         }
 
         await sendDelay(`✅ *Semua file berhasil diperbarui!*`);
-        await sendDelay(`🚀 Bot tetap berjalan tanpa restart.`);
+        await sendDelay(`🚀 Semua Sudah ter Update Have a good day @Ryuusuke.`);
 
     } catch (err) {
         await sendDelay(`❌ Gagal update: ${err.message}`);
