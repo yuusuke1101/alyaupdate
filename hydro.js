@@ -4078,7 +4078,7 @@ switch(command) {
 }
 break;
 	case 'update': {
-    if (!Ahmad) return replytolak(mess.only.owner)
+    if (!Ahmad) return replytolak(mess.only.owner);
 
     const axios = require('axios');
     const fs = require('fs');
@@ -4090,35 +4090,36 @@ break;
         { url: "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/lib/listmenu.js", path: "./lib/listmenu.js" }
     ];
 
-    try {
+    // Fungsi kirim pesan dengan delay 2 detik
+    const sendDelay = async (msg) => {
+        await hydro.sendMessage(m.chat, { text: msg });
+        await sleep(2000); // delay 2 detik per pesan
+    };
 
-        await replyhydro(`🔄 *Memulai update ${global.botname}...*`)
+    try {
+        await sendDelay(`🔄 *Memulai proses update...*`);
+        await sendDelay(`⏳ Jangan kirim pesan dulu, bot sedang update file.`);
 
         let total = files.length;
         let count = 1;
 
         for (let file of files) {
-
-            await replyhydro(`➡ Mengupdate *${file.path}*...`);
+            await sendDelay(`➡ Mengupdate *${file.path}*...`);
 
             const { data } = await axios.get(file.url);
             fs.writeFileSync(file.path, data);
 
             let percent = Math.floor((count / total) * 100);
-
-            await replyhydro(`Progress: ${count}/${total} (${percent}%)`);
+            await sendDelay(`Progress: ${count}/${total} (${percent}%)`);
 
             count++;
-            await sleep(500); // biar lebih smooth
         }
-        await replyhydro(`✅ *Semua file berhasil diperbarui!*\n🔁 Restarting bot...`);
-        await replyhydro(`Done ✅`);
 
-        await sleep(2000);
-        process.exit();
+        await sendDelay(`✅ *Semua file berhasil diperbarui!*`);
+        await sendDelay(`🚀 Bot tetap berjalan tanpa restart.`);
 
     } catch (err) {
-        replyhydro("❌ Gagal update: " + err.message);
+        await sendDelay(`❌ Gagal update: ${err.message}`);
     }
 }
 break;
