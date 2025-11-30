@@ -4077,7 +4077,7 @@ switch(command) {
     }
 }
 break;
-	case 'update': {
+	case 'updatealya': {
     if (!Ahmad) return replytolak(mess.only.owner);
 
     const axios = require('axios');
