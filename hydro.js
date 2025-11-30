@@ -4077,7 +4077,7 @@ switch(command) {
     }
 }
 break;
-	case 'updatealya': {
+	case 'updatealya': { 
     if (!Ahmad) return replytolak(mess.only.owner);
 
     const axios = require('axios');
@@ -4090,10 +4090,10 @@ break;
         { url: "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/lib/listmenu.js", path: "./lib/listmenu.js" }
     ];
 
-    // Fungsi kirim pesan dengan delay 2 detik
+    // Kirim pesan dengan delay aman (8 detik)
     const sendDelay = async (msg) => {
         await hydro.sendMessage(m.chat, { text: msg });
-        await sleep(2000); // delay 2 detik per pesan
+        await sleep(8000); // delay 8 detik per pesan
     };
 
     try {
@@ -4116,7 +4116,7 @@ break;
         }
 
         await sendDelay(`✅ *Semua file berhasil diperbarui!*`);
-        await sendDelay(`🚀 Semua Sudah ter Update Have a good day @Ryuusuke.`);
+        await sendDelay(`🚀 Bot tetap berjalan tanpa restart.`);
 
     } catch (err) {
         await sendDelay(`❌ Gagal update: ${err.message}`);
