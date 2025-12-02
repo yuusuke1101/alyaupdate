@@ -33,8 +33,10 @@ const { Primbon } = require('scrape-primbon')
 const packageJson = require('./package.json'); 
 const primbon = new Primbon()
 const canvafy = require('canvafy')
+const { ktpgen } = require('./lib/ktpmaker.js');
 const toFigureHandler = require('./lib/chainbreak');
 const photoEdit = require("./lib/chainbreak2");
+const { reactChannel } = require('./lib/reactch.js');
 const { isSetLeft, addSetLeft, removeSetLeft, changeSetLeft } = require('./lib/setleft');
 const { getTextSetWelcome } = require('./lib/setwelcome');
 const { getTextSetLeft } = require('./lib/setleft');
@@ -3810,6 +3812,7 @@ async function generateTextImage(templatePath, outputPath, text, options = {}) {
     return buffer;
 }
 // ==== DATABASE ====
+// ==== CONFIG ====
 const leveldbPath = './database/leveling.json'
 const cooldownPath = './database/xpcooldown.json'
 
@@ -3857,7 +3860,7 @@ function getBadge(level) {
   return badge
 }
 
-// === XP SYSTEM ====
+// ==== XP SYSTEM ====
 if (m.isGroup && !m.isCommand) {
   const userId = m.sender
   const now = Date.now()
@@ -3867,15 +3870,16 @@ if (m.isGroup && !m.isCommand) {
   if (!global.xpCooldown[userId]) global.xpCooldown[userId] = 0
 
   if (now - global.xpCooldown[userId] >= cooldownTime) {
-
     global.xpCooldown[userId] = now
 
     const user = getUserLevel(userId)
     const randomXP = Math.floor(Math.random() * 10) + 5
     const oldLevel = user.level
 
+    // Tambah XP random
     user.xp += randomXP
 
+    // ==== CEK LEVEL UP ====
     if (checkLevelUp(user)) {
 
       try {
@@ -3886,13 +3890,25 @@ if (m.isGroup && !m.isCommand) {
           ppuser = 'https://avatars.githubusercontent.com/u/159487561?v=4'
         }
 
+        // ===== API ANABOT LEVEL UP =====
         const background = "https://files.catbox.moe/0kawfp.jpg"
         const nameUser = m.pushName
         const newLevel = user.level
 
-        const apiURL = `https://api.siputzx.my.id/api/canvas/level-up?backgroundURL=${encodeURIComponent(background)}&avatarURL=${encodeURIComponent(ppuser)}&fromLevel=${oldLevel}&toLevel=${newLevel}&name=${encodeURIComponent(nameUser)}`
+        const apiUrl =
+          `https://anabot.my.id/api/maker/levelup` +
+          `?avatar=${encodeURIComponent(ppuser)}` +
+          `&background=${encodeURIComponent(background)}` +
+          `&username=${encodeURIComponent(nameUser)}` +
+          `&description=${encodeURIComponent(`Level ${oldLevel} ➜ ${newLevel}`)}` +
+          `&borderColor=000000` +
+          `&avatarBorderColor=ff0000` +
+          `&overlayOpacity=0.7` +
+          `&currentLevel=${oldLevel}` +
+          `&nextLevel=${newLevel}` +
+          `&apikey=freeApikey` // <<=== GANTI PUNYAMU
 
-        const buffer = await getBuffer(apiURL)
+        const buffer = await getBuffer(apiUrl)
 
         await hydro.sendMessage(m.chat, {
           image: buffer,
@@ -3902,12 +3918,12 @@ if (m.isGroup && !m.isCommand) {
 
       } catch (err) {
         console.log("Level-up API Error:", err)
-        hydro.sendMessage(m.chat, {
-          text: `🎉 *LEVEL UP!*\nSelamat @${userId.split('@')[0]}\nLevel *${oldLevel} ➜ ${user.level}*\n(Gambar gagal dimuat)`,
+
+        await hydro.sendMessage(m.chat, {
+          text: `🎉 *LEVEL UP!*\nSelamat @${userId.split('@')[0]}!\nLevel *${oldLevel} ➜ ${user.level}*\n(Gambar gagal dimuat)`,
           mentions: [userId]
         })
       }
-
     }
 
     fs.writeFileSync(leveldbPath, JSON.stringify(leveldb, null, 2))
@@ -4025,8 +4041,176 @@ if (isBlacklisted(m.sender)) {
     await hydro.sendMessage(m.chat, { react: { text: "⛔", key: m.key } });
     return; 
 }
-
+if (!body.startsWith(prefix)) return
 switch(command) {
+	
+	case 'reactch': {
+		if (!isPrem) return replyprem(mess.premium)
+		if (!Ahmad) return replytolak(mess.only.owner)
+    if (args.length < 2) return m.reply(`Format:\n${prefix + command} <link> <emoji1> <emoji2> ...\nContoh:\n${prefix + command} https://whatsapp.com/channel/xxxx 👍,❤,️🔥`);
+
+    const link = args.shift();
+    let emojiList = args.join(" ")
+        .replace(/,/g, " ")
+        .split(/\s+/)
+        .filter(e => e.trim());
+
+    const emoji = emojiList.join(",");
+    const apiKey = global.api.reactch;
+
+    try {
+        const url = `https://react.whyux-xec.my.id/api/rch?link=${encodeURIComponent(link)}&emoji=${encodeURIComponent(emoji)}`;
+        const fetch = require('node-fetch');
+        const res = await fetch(url, {
+            method: "GET",
+            headers: {
+                "x-api-key": apiKey
+            }
+        });
+
+        const json = await res.json();
+        m.reply(JSON.stringify(json, null, 2));
+
+    } catch (e) {
+        m.reply("❌ Error saat mengambil data API!");
+    }
+}
+break;
+	case 'mirror':
+case 'tomirror':
+case 'jadimirror': {
+
+    if (!m.quoted)
+        return m.reply(`reply gambar dengan caption *${prefix + command}*`);
+
+    let mime = m.quoted.mimetype || "";
+    if (!/image\/(jpe?g|png)/.test(mime))
+        return m.reply(`Format *${mime}* tidak didukung! Kirim gambar jpg/png.`);
+
+    m.reply("⏳ tunggu sebentar ya...");
+
+    try {
+        let imgBuffer = await m.quoted.download();
+
+        const form = new FormData();
+        form.append("file", imgBuffer, { filename: "foto.jpg", contentType: mime });
+
+        let upload = await axios.post("https://tmpfiles.org/api/v1/upload", form, { headers: form.getHeaders() });
+        let fileUrl = upload.data.data.url.replace("tmpfiles.org/", "tmpfiles.org/dl/");
+
+        let apiUrl = `https://api.elrayyxml.web.id/api/ephoto/mirror?url=${encodeURIComponent(fileUrl)}`;
+        let hasil = await axios.get(apiUrl, { responseType: "arraybuffer" });
+
+        await hydro.sendMessage(m.chat, { image: hasil.data, caption: "🪞 *Done bujank!*" }, { quoted: m });
+
+    } catch (err) {
+        console.error(err);
+        m.reply("❌ Gagal membuat versi Mirror.");
+    }
+}
+break;
+case 'toplaylist':
+case 'jadiplaylist': {
+
+    if (!m.quoted)
+        return m.reply(`reply gambar dengan caption *${prefix + command}*`);
+
+    let mime = m.quoted.mimetype || "";
+    if (!/image\/(jpe?g|png)/.test(mime))
+        return m.reply(`Format *${mime}* tidak didukung! Kirim gambar jpg/png.`);
+
+    m.reply("⏳ tunggu sebentar ya...");
+
+    try {
+        let imgBuffer = await m.quoted.download();
+
+        const form = new FormData();
+        form.append("file", imgBuffer, { filename: "foto.jpg", contentType: mime });
+
+        let upload = await axios.post("https://tmpfiles.org/api/v1/upload", form, { headers: form.getHeaders() });
+        let fileUrl = upload.data.data.url.replace("tmpfiles.org/", "tmpfiles.org/dl/");
+
+        let apiUrl = `https://api.elrayyxml.web.id/api/ephoto/playlist?url=${encodeURIComponent(fileUrl)}`;
+        let hasil = await axios.get(apiUrl, { responseType: "arraybuffer" });
+
+        await hydro.sendMessage(m.chat, { image: hasil.data, caption: "🎵 *Done bujank!*" }, { quoted: m });
+
+    } catch (err) {
+        console.error(err);
+        m.reply("❌ Gagal membuat versi Playlist.");
+    }
+}
+break;
+	case 'faketwit': {
+    const axios = require('axios');
+    const FormData = require('form-data');
+
+    const q = m.quoted ? m.quoted : m;
+    const mime = (q.msg || q).mimetype || '';
+
+    let argsText = args.join(' ');
+    if (!argsText.includes('|')) {
+        return replyhydro(
+`✨ *Fake Tweet*\n\n` +
+`📌 Cara pakai:\n` +
+`1. Reply gambar / kirim gambar (opsional, bisa pakai default avatar)\n` +
+`2. Kirim:\n` +
+`faketwit displayName|username|comment|verified|date|likes|retweets|comments|bookmarks|views|theme\n\n` +
+`Contoh:\n` +
+`faketwit Ryuusuke_ID|Ryuusuke|Aku admin kau kacung|true|2025-11-30|123|45|67|8|900|light`
+        );
+    }
+
+    let [
+        displayName, username, comment,
+        verified, date,
+        likes, retweets, comments, bookmarks, views, theme
+    ] = argsText.split('|').map(s => s.trim());
+
+    displayName = displayName || 'Anonymous';
+    username = username || 'anonymous';
+    comment = comment || '-';
+    verified = verified ? verified.toLowerCase() === 'true' : true;
+    date = date || new Date().toISOString().split('T')[0];
+    likes = likes || 0;
+    retweets = retweets || 0;
+    comments = comments || 0;
+    bookmarks = bookmarks || 0;
+    views = views || 0;
+    theme = theme || 'light';
+
+    replyhydro('⏳ Sedang membuat Fake Tweet...');
+
+    try {
+        let avatarUrl = 'https://upload.wikimedia.org/wikipedia/commons/8/8d/President_Barack_Obama.jpg'; // default
+        if (mime.startsWith('image/')) {
+            const mediaBuffer = await q.download();
+            if (mediaBuffer) {
+                let form = new FormData();
+                form.append('reqtype', 'fileupload');
+                form.append('fileToUpload', mediaBuffer, { filename: 'avatar.jpg' });
+                let upload = await axios.post('https://catbox.moe/user/api.php', form, { headers: form.getHeaders() });
+                avatarUrl = upload.data;
+            }
+        }
+
+        const apiKey = 'freeApikey';
+        const apiUrl = `https://anabot.my.id/api/maker/twitter?displayName=${encodeURIComponent(displayName)}&username=${encodeURIComponent(username)}&avatar=${encodeURIComponent(avatarUrl)}&comment=${encodeURIComponent(comment)}&verified=${verified}&date=${encodeURIComponent(date)}&likes=${likes}&retweets=${retweets}&comments=${comments}&bookmarks=${bookmarks}&views=${views}&theme=${encodeURIComponent(theme)}&apikey=${apiKey}`;
+
+        const res = await axios.get(apiUrl, { responseType: 'arraybuffer' });
+        const imageBuffer = res.data;
+
+        await hydro.sendMessage(m.chat, {
+            image: imageBuffer,
+            caption: `✅ Fake Tweet berhasil dibuat\n• Display Name: ${displayName}\n• Username: ${username}\n• Comment: ${comment}\n• Verified: ${verified}\n• Date: ${date}\n• Likes: ${likes}\n• Retweets: ${retweets}\n• Comments: ${comments}\n• Bookmarks: ${bookmarks}\n• Views: ${views}\n• Theme: ${theme}`
+        }, { quoted: m });
+
+    } catch (e) {
+        console.error(e);
+        replyhydro('❌ Terjadi kesalahan: ' + e.message);
+    }
+}
+break;
 	case 'uhd': {
     if (!quoted || !/image/.test(mime))
         return replyhydro(`📸 Kirim atau reply gambar dengan caption *${command}* untuk meningkatkan kualitas.`);
@@ -4090,7 +4274,6 @@ break;
         { url: "https://raw.githubusercontent.com/yuusuke1101/alyaupdate/main/lib/listmenu.js", path: "./lib/listmenu.js" }
     ];
 
-    // Kirim pesan dengan delay aman (8 detik)
     const sendDelay = async (msg) => {
         await hydro.sendMessage(m.chat, { text: msg });
         await sleep(8000); // delay 8 detik per pesan
@@ -4143,12 +4326,19 @@ case 'scalya': {
 
         const fileBuffer = await fetch(directLink).then(res => res.arrayBuffer());
 
-        await hydro.sendMessage(m.chat, {
-            document: Buffer.from(fileBuffer),
-            fileName: fileName,
-            mimetype: 'application/zip'
-        }, { quoted: m });
-		hydro.sendMessage(m.chat, { react: { text: "✅", key: m.key } });
+        await hydro.sendMessage(
+            m.chat,
+            {
+                document: Buffer.from(fileBuffer),
+                fileName: fileName,
+                mimetype: 'application/zip',
+                caption: `🔗 *Link MediaFire:*\n${mediafireLink}`
+            },
+            { quoted: m }
+        );
+
+        hydro.sendMessage(m.chat, { react: { text: "✅", key: m.key } });
+
     } catch (err) {
         console.log(err);
         m.reply('❌ Terjadi kesalahan saat mengirim file AlyaV5.');
@@ -4442,7 +4632,6 @@ break;
     }
 }
 break;
-	
 	case 'tofurina': 
 case 'furina': {
     const axios = require("axios");
@@ -5224,34 +5413,72 @@ break;
         const user = getUserLevel(m.sender);
         const badge = getBadge(user.level);
 
-        const backgroundURL = encodeURIComponent('https://files.catbox.moe/0kawfp.jpg'); 
-        const avatarURL = encodeURIComponent(await hydro.profilePictureUrl(m.sender, 'image'));
-        const rankName = badge; 
-        const rankId = user.level; 
-        const exp = user.xp;
-        const requireExp = user.level * 100; 
-        const level = user.level;
-        const name = m.pushName || 'NoName';
+        // Nama user (pushName)
+        const name = m.pushName || 'User';
 
+        // ID pakai nomor WA user
+        const userId = m.sender.split('@')[0];
 
-        const apiURL = `https://api.siputzx.my.id/api/canvas/profile?backgroundURL=${backgroundURL}&avatarURL=${avatarURL}&rankName=${rankName}&rankId=${rankId}&exp=${exp}&requireExp=${requireExp}&level=${level}&name=${encodeURIComponent(name)}`;
+        // Ambil PP user (fallback jika error)
+        const pp = await hydro.profilePictureUrl(m.sender, 'image')
+            .catch(() => 'https://telegra.ph/file/e38b22c6e3cb84c457e5d.jpg');
+
+        const encodedPP = encodeURIComponent(pp);
+
+        // Random activity
+        const activityNameList = [
+            "Watching Anime",
+            "Grinding XP",
+            "AFK Mode",
+            "Listening Music",
+            "Online",
+            "Relaxing",
+            "Boosting Level",
+            "Exploring World"
+        ];
+
+        const activityDetailList = [
+            "Keep going!",
+            "Leveling up!",
+            "Chill vibes only.",
+            "XP boost active.",
+            "Never give up!",
+            "Enjoying life.",
+        ];
+
+        const activityName = encodeURIComponent(activityNameList[Math.floor(Math.random() * activityNameList.length)]);
+        const activityDetails = encodeURIComponent(activityDetailList[Math.floor(Math.random() * activityDetailList.length)]);
+
+        // API baru
+        const apiURL = `https://anabot.my.id/api/maker/profile?` +
+            `userId=${userId}&` +
+            `borderColor=000000&` +
+            `activityName=${activityName}&` +
+            `activityDetails=${activityDetails}&` +
+            `largeImage=${encodedPP}&` +
+            `smallImage=${encodedPP}&` +
+            `apikey=freeApikey`;
 
         const res = await fetch(apiURL);
+        if (!res.ok) throw new Error("API error");
+
         const buffer = await res.arrayBuffer();
 
         await hydro.sendMessage(m.chat, {
             image: Buffer.from(buffer),
-            caption: `📊 *LEVEL PROFILE*\n` +
-                     `👤 User: @${m.sender.split('@')[0]}\n` +
-                     `🎯 XP: *${user.xp}*\n` +
-                     `🚀 Level: *${user.level}*\n` +
-                     `🏅 Badge: ${badge}\n` +
-                     `Butuh *${requireExp - exp} XP* lagi untuk naik level.`,
+            caption:
+                `📊 *LEVEL PROFILE*\n` +
+                `👤 Nama: *${name}*\n` +
+                `🪪 ID: *${userId}*\n` +
+                `🎯 XP: *${user.xp}*\n` +
+                `🚀 Level: *${user.level}*\n` +
+                `🏅 Badge: ${badge}\n` +
+                `Butuh *${user.level * 100 - user.xp} XP* lagi untuk naik level.`,
         }, { mentions: [m.sender] });
 
     } catch (err) {
         console.error(err);
-        m.reply('❌ Gagal menampilkan rank. Coba lagi nanti!');
+        m.reply('❌ Gagal menampilkan rank. Coba lagi!');
     }
 }
 break;
@@ -5487,29 +5714,6 @@ case 'sendupgc': {
   }
 }
 break
-case 'reactch': {
-  if (!Ahmad) return replytolak(mess.only.owner)
-
-  if (!text || !args[0] || !args[1])
-    return reply(`📌 Contoh penggunaan:\n.reactch https://whatsapp.com/channel/0029Vb6rCGN1iUxVlXtqp707/235/4054 😂`);
-
-  if (!args[0].includes('https://whatsapp.com/channel/'))
-    return replytolak('❌ Link tautan tidak valid.');
-
-  try {
-    const result = args[0].split('/')[4];
-    const serverId = args[0].split('/')[5];
-    const res = await hydro.newsletterMetadata('invite', result);
-    await hydro.newsletterReactMessage(res.id, serverId, args[1]);
-    reply(`✅ Berhasil mengirim reaction ${args[1]} ke channel *${res.name}*`);
-  } catch (err) {
-    console.error(err);
-    reply(`❌ Gagal mengirim reaction: ${err.message}`);
-  }
-
-  break;
-}
-
 case 'paustart2':
 case 'paustad':
 case 'pak-ustad2': {
@@ -6160,7 +6364,8 @@ case 'daftar1': {
 break;
 case 'daftar2': {
     const userId = m.sender;
-	
+	if (registeredUsers.some(user => user.id === userId))
+        return reply('✅ Kamu sudah terdaftar sebelumnya!');
     const nama = pushname || `User${registeredUsers.length + 1}`;
     const kodeReg = generateKodeReg(8); 
     const daftar_pada = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
@@ -6901,6 +7106,8 @@ _ɢᴜɴᴀᴋᴀɴ ᴅᴇɴɢᴀɴ ʙɪᴊᴀᴋ_
 ┣➤ *${prefix}jadwalsholat*
 ┗━━━━━━━━━━━━━━━━⊱
 『 *\`乂 New Feature 乂\`* 』━◧
+┣➤ *${prefix}faketwit*
+┣➤ *${prefix}UHD*
 ┣➤ *${prefix}tokobo*
 ┣➤ *${prefix}loker*
 ┣➤ *${prefix}blacklist*
@@ -28626,15 +28833,15 @@ case 'backup': {
  pe != "package-lock.json" &&
  pe != "yarn.lock" &&
  pe != "");
- const exec = await execSync(`zip -r hydro.zip ${ls.join(" ")}`);
+ const exec = await execSync(`zip -r AlyaChan.zip ${ls.join(" ")}`);
  await hydro.sendMessage(m.isGroup ? 6283166570663 + '@s.whatsapp.net' : from, {
- document: await fs.readFileSync('./hydro.zip'),
+ document: await fs.readFileSync('./AlyaChan.zip'),
  mimetype: "application/zip",
- fileName: "hydro.zip",
+ fileName: "AlyaChan.zip",
  }, {
  quoted: m
  });
- await execSync("rm -rf hydro.zip");
+ await execSync("rm -rf AlyaChan.zip");
  } catch (err) {
  reply('Terjadi kesalahan')
  console.error('Error: ', err)
@@ -29811,7 +30018,7 @@ case 'cai': {
 break
 //=========================================\\======
 case 'hydro':
-case 'dro': {
+case 'Alya': {
   const Gemini = require('@google/generative-ai');
   const fs = require('fs');
   const path = require('path');
@@ -36721,45 +36928,42 @@ case 'ytvideo2': {
 }
 break;
 case 'ytmp4': {
-    if (!q) return reply(`Masukkan link YouTube!\n\nContoh:\n${prefix + command} https://youtu.be/mzX0rhF8buo`);
-
     try {
-         hydro.sendMessage(m.chat, {
-            react: {
-                text: '⏳',
-                key: m.key
-            }
-        });
+        if (!text) return m.reply(`Example:\n${prefix + command} https://youtu.be/xxxx`);
 
-        const apiUrl = `https://anabot.my.id/api/download/ytmp4?url=${encodeURIComponent(q)}&quality=480&apikey=freeApikey`;
-        const { data } = await axios.get(apiUrl);
+        await hydro.sendMessage(m.chat, { react: { text: "⏳", key: m.key } });
 
-        if (!data.success || !data.data || !data.data.result) {
-            return reply("❌ Gagal mengambil video dari API.");
-        }
+        const axios = require('axios');
+        const yurl = text.trim();
 
-        const result = data.data.result;
-        const meta = result.metadata;
+        const api = `https://api.nekolabs.web.id/downloader/youtube/v2?url=${encodeURIComponent(yurl)}`;
 
-        const videoUrl = result.urls;
-        const title = meta.title || "YouTube Video";
-        const duration = meta.duration || "-";
-        const channel = meta.channel || "-";
+        const { data } = await axios.get(api);
+
+        if (!data.success || !data.result) 
+            return m.reply("Gagal mengambil data video!");
+
+        const medias = data.result.medias;
+
+        let video =
+            medias.find(v => v.label.includes("480")) ||
+            medias.find(v => v.label.includes("360")) ||
+            medias.find(v => v.label.includes("720")) ||
+            medias[0];
+
+        if (!video) return m.reply("Format video tidak ditemukan!");
 
         await hydro.sendMessage(m.chat, {
-            video: { url: videoUrl },
+            video: { url: video.url },
             mimetype: "video/mp4",
-            caption:
-                `🎬 *YouTube Downloader*\n\n` +
-                `📌 *Judul:* ${title}\n` +
-                `📺 *Channel:* ${channel}\n` +
-                `⏱️ *Durasi:* ${duration}\n` +
-                `📥 *Quality:* 480p\n`
+            caption: `🎬 *${data.result.title}*\nResolusi: ${video.label}`
         }, { quoted: m });
 
+        await hydro.sendMessage(m.chat, { react: { text: "✅", key: m.key } });
+
     } catch (e) {
-        console.error(e);
-        reply(`❌ Error: ${e.message}`);
+        console.log(e);
+        m.reply("Terjadi kesalahan, coba lagi nanti!");
     }
 }
 break;
@@ -36926,9 +37130,11 @@ fs.writeFileSync('./database/hyds.json', JSON.stringify(prem))
 replyhydro(`The Number ${prrkek} Has Been Own Jasher!`)
 }
 break
-case 'lirik': case 'lyrics': case 'lyric': {
-    if (!text) return m.reply(`Contoh:\n${prefix}lirik one direction - one thing`);
-    
+case 'lirik':
+case 'lyrics':
+case 'lyric': {
+    if (!text) return replyhydro(`Contoh:\n${prefix}lirik one direction - one thing`);
+
     m.reply('⏳ Sedang mencari lirik...');
 
     try {
@@ -36936,27 +37142,26 @@ case 'lirik': case 'lyrics': case 'lyric': {
         const url = `https://api.zenzxz.my.id/api/tools/lirik?title=${encodeURIComponent(text)}`;
 
         const { data } = await axios.get(url);
+
         if (!data.success || !data.data || !data.data.result || data.data.result.length === 0)
-            return m.reply('❌ Lirik tidak ditemukan!');
+            return replyhydro('❌ Lirik tidak ditemukan!');
 
-        const info = data.data.result[0]; // Ambil hasil pertama
+        const info = data.data.result[0];
 
+        // ===== TEXT Lirik =====
         let teks = `🎵 *LIRIK LAGU*\n\n`;
         teks += `🎧 *Judul:* ${info.trackName}\n`;
         teks += `👤 *Artist:* ${info.artistName}\n`;
         teks += `💿 *Album:* ${info.albumName}\n`;
         teks += `⏱️ *Durasi:* ${info.duration} detik\n`;
         teks += `🎼 *Instrumental:* ${info.instrumental ? 'Ya' : 'Tidak'}\n`;
-        teks += `\n📌 *Lirik:* \n\n${info.plainLyrics}\n`;
-
-        await hydro.sendMessage(m.chat, {
-            image: { url: global.thumbnail },
-            caption: teks
-        });
+        teks += `\n📌 *Lirik:* \n\n${info.plainLyrics}`;
+		
+        replyhydro(teks);
 
     } catch (e) {
         console.error(e);
-        return m.reply('❌ Terjadi kesalahan saat mengambil lirik.');
+        return replyhydro('❌ Terjadi kesalahan saat mengambil lirik.');
     }
 }
 break;
@@ -40602,8 +40807,8 @@ delete kuismath[m.sender.split('@')[0]]
 }
             }
             break
-            case 'lirik':
-            case 'lyrics': {
+            case 'lirik2':
+            case 'lyrics2': {
 async function googleLyrics(judulLagu) {
   try {
     const response = await fetch(`https://r.jina.ai/https://www.google.com/search?q=liirk+lagu+${encodeURIComponent(judulLagu)}&hl=en`, {

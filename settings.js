@@ -24,6 +24,8 @@ global.owner = ['6283166570663']
 global.ownernomer = '6283166570663'
 global.socialm = 'GitHub: -'
 global.location = 'Indonesia' 
+global.api = {};
+global.api.reactch = 'e40bf7cbaca4e246a0273b48bdb56c4079f8fe537b7739c5b9225b0b96079544';
 //========================setting Payment=====================\\
 global.nodana = '0895410057557' // KOSONG KAN JIKA TIDAK ADA
 global.nogopay = '083166570663' // KOSONG KAN JIKA TIDAK ADA 
