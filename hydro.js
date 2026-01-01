@@ -37553,132 +37553,54 @@ case 'ytvideo2': {
 }
 break;
 case 'ytmp4': {
-  if (!text) {
-    return replyhydro(
-      `🎬 *YouTube MP4 Downloader*\n\n` +
-      `📌 *Cara Pakai:*\n` +
-      `• ${prefix + command} <link>\n` +
-      `• ${prefix + command} <link> <resolusi>\n\n` +
-      `💡 *Contoh:*\n` +
-      `${prefix + command} https://youtu.be/abc123\n` +
-      `${prefix + command} https://youtu.be/abc123 720`
-    )
-  }
+    if (!q) return reply(`⚠️ Masukkan link YouTube!\nContoh:\n${prefix + command} https://youtu.be/WPl10ZrhCtk`);
 
-  const args = text.split(' ')
-  const link = args[0]
-  const resolution = args[1]
+    try {
+        await hydro.sendMessage(m.chat, { react: { text: "⏳", key: m.key } });
 
-  if (!isUrl(link) || !link.includes('youtu')) {
-    return replyhydro('⚠️ Link YouTube tidak valid!')
-  }
+        const axios = (await import('axios')).default;
+        const videoUrl = q.trim();
+        const apiUrl = `https://api-faa.my.id/faa/ytmp4?url=${encodeURIComponent(videoUrl)}`;
 
-  const { savetube } = require('./fitur/ytmp4')
+        const { data } = await axios.get(apiUrl);
 
-  const data = await savetube(link)
-  if (!data) return replyhydro('❌ Gagal mengambil data video')
-
-  const videos = data.videos
-    .filter(v => String(v.label).toLowerCase().includes('p'))
-    .filter(v => v.url)
-
-  if (!videos.length) return replyhydro('❌ Resolusi video tidak tersedia')
-
-  if (!resolution) {
-
-    const rows = videos.map(v => {
-      const lock = v.quality >= 1080
-      return {
-        header: "",
-        title: lock ? `${v.quality}p 🔒 Premium` : `${v.quality}p`,
-        description: lock
-          ? '🔐 Khusus Premium / Owner'
-          : `⬇ Unduh ${v.quality}p`,
-        id: `.ytmp4 ${link} ${v.quality}`
-      }
-    })
-
-    const msg = generateWAMessageFromContent(m.chat, {
-      viewOnceMessage: {
-        message: {
-          messageContextInfo: {
-            deviceListMetadata: {},
-            deviceListMetadataVersion: 2
-          },
-          interactiveMessage: {
-            body: {
-              text: `📥 *Pilih resolusi video:*\n\n🎬 *${data.title}*`
-            },
-            footer: {
-              text: `💡 ${botname} — MP4 Downloader`
-            },
-            header: {
-              title: "📺 YouTube MP4",
-              subtitle: "Tanpa Audio",
-              hasMediaAttachment: false
-            },
-            nativeFlowMessage: {
-              buttons: [{
-                name: "single_select",
-                buttonParamsJson: JSON.stringify({
-                  title: "🎯 Pilih Resolusi",
-                  sections: [{
-                    title: "Resolusi Video",
-                    rows
-                  }]
-                })
-              }]
-            }
-          }
+        if (!data.status || !data.result || !data.result.download_url) {
+            return reply("❌ Gagal mengambil video dari API. Pastikan link YouTube valid atau coba lagi nanti.");
         }
-      }
-    }, { quoted: m })
 
-    await hydro.relayMessage(
-      msg.key.remoteJid,
-      msg.message,
-      { messageId: msg.key.id }
-    )
-    return
-  }
+        const video = data.result;
 
-  const selected = videos.find(v => String(v.quality) === resolution)
-  if (!selected) return replyhydro('❌ Resolusi tidak tersedia')
+        const videoBuf = await (
+            await axios.get(video.download_url, { responseType: "arraybuffer" })
+        ).data;
 
-  const isFree = ['144', '240', '360', '480', '720'].includes(resolution)
+        const safeTitle = (video.title || 'video').replace(/[/\\?%*:|"<>]/g, '').substring(0, 50);
 
-  if (!isPrem && !Ahmad && !isFree) {
-    return replyhydro(
-      `⛔ *Akses Ditolak!*\n\n` +
-      `Resolusi *${resolution}p* hanya untuk:\n` +
-      `• 👑 Owner\n` +
-      `• 🟢 Premium User`
-    )
-  }
+        const caption =
+            `🎬 *YouTube Downloader*\n\n` +
+            `🚀 *Powered By:* ${botname}\n` +
+            `📥 *Format:* ${video.format}\n` +
+            `📏 *Size:* ${(videoBuf.byteLength / 1024 / 1024).toFixed(2)} MB`;
+        await hydro.sendMessage(
+            m.chat,
+            {
+                video: videoBuf,
+                mimetype: "video/mp4",
+                fileName: `${safeTitle}.mp4`,
+                caption,
+                thumbnail: video.thumbnail
+            },
+            { quoted: m }
+        );
 
-  await hydro.sendMessage(m.chat, {
-    video: { url: selected.url },
-    caption:
-      `✅ *Download Berhasil*\n\n` +
-      `🎬 Judul: ${data.title}\n` +
-      `📺 Resolusi: ${resolution}p`
-  }, { quoted: m })
+        await hydro.sendMessage(m.chat, { react: { text: "✅", key: m.key } });
 
+    } catch (e) {
+        console.error(e);
+        reply(`❌ Terjadi kesalahan: ${e.message}\n⚠️ Coba lagi nanti.`);
+    }
 }
-break
-
-case 'ytmp4dl': {
-  if (!text) return
-
-  await hydro.sendMessage(m.chat, {
-    video: { url: text },
-    caption: '✅ Sukses\n\nPowered by Alya chan Assistent'
-  }, { quoted: m })
-}
-break
-
-
-
+break;
 case "get": case ".g": {
   if (m.key.fromMe) return
   if (!text) return reply("https://example.com");
