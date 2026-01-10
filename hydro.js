@@ -37280,15 +37280,22 @@ case 'ytmp3': {
     await hydro.sendMessage(m.chat, { react: { text: "⏱️", key: m.key } });
 
     try {
-        const urlApi = `https://api.elrayyxml.web.id/api/downloader/ytmp3?url=${encodeURIComponent(text)}`;
+        const urlApi = `https://api.nekolabs.web.id/downloader/youtube/v5?url=${encodeURIComponent(text)}`;
         const res = await fetchJson(urlApi);
 
-        if (!res.status) return replyhydro('❌ Gagal mengambil data dari server.');
+        if (!res.success) return replyhydro('❌ Gagal mengambil data dari server.');
 
-        const { title, format, thumbnail, duration, url: download_url } = res.result;
+        const result = res.result;
+        const title = result.title;
+        const duration = result.lengthSeconds;
+        const thumbnail = result.thumbnail[result.thumbnail.length - 1].url; // ambil thumbnail resolusi tinggi
+        const formats = result.formats;
 
-        const audioBuf = await getBuffer(download_url);
-        const { toPTT } = require('./lib/converter'); // pastikan file converter ada
+        let audioFormat = formats.find(f => f.itag === 18) || formats[0];
+        if (!audioFormat) return replyhydro('❌ Tidak ada format audio yang tersedia.');
+
+        const audioBuf = await getBuffer(audioFormat.url);
+        const { toPTT } = require('./lib/converter'); 
         const vnAudio = await toPTT(audioBuf, 'mp4');
 
         await hydro.sendMessage(
@@ -37300,7 +37307,7 @@ case 'ytmp3': {
                 contextInfo: {
                     externalAdReply: {
                         title: title,
-                        body: `Creator - ${global.botname} | Duration: ${duration} detik | Format: ${format}`,
+                        body: `Creator - ${global.botname} | Duration: ${duration} detik | Format: mp3`,
                         mediaType: 1,
                         renderLargerThumbnail: true,
                         thumbnailUrl: thumbnail,
@@ -37560,27 +37567,29 @@ case 'ytmp4': {
 
         const axios = (await import('axios')).default;
         const videoUrl = q.trim();
-        const apiUrl = `https://api-faa.my.id/faa/ytmp4?url=${encodeURIComponent(videoUrl)}`;
+        const apiUrl = `https://api.nekolabs.web.id/downloader/youtube/v5?url=${encodeURIComponent(videoUrl)}`;
 
         const { data } = await axios.get(apiUrl);
 
-        if (!data.status || !data.result || !data.result.download_url) {
+        if (!data.success || !data.result || !data.result.formats) {
             return reply("❌ Gagal mengambil video dari API. Pastikan link YouTube valid atau coba lagi nanti.");
         }
 
-        const video = data.result;
+        let videoFormat = data.result.formats.find(f => f.qualityLabel === "480p");
+        if (!videoFormat) videoFormat = data.result.formats[0];
 
         const videoBuf = await (
-            await axios.get(video.download_url, { responseType: "arraybuffer" })
+            await axios.get(videoFormat.url, { responseType: "arraybuffer" })
         ).data;
 
-        const safeTitle = (video.title || 'video').replace(/[/\\?%*:|"<>]/g, '').substring(0, 50);
+        const safeTitle = (data.result.title || 'video').replace(/[/\\?%*:|"<>]/g, '').substring(0, 50);
 
         const caption =
             `🎬 *YouTube Downloader*\n\n` +
             `🚀 *Powered By:* ${botname}\n` +
-            `📥 *Format:* ${video.format}\n` +
-            `📏 *Size:* ${(videoBuf.byteLength / 1024 / 1024).toFixed(2)} MB`;
+            `📏 *Size:* ${(videoBuf.byteLength / 1024 / 1024).toFixed(2)} MB\n` +
+            `⏱️ *Duration:* ${data.result.lengthSeconds || 'N/A'} detik`;
+
         await hydro.sendMessage(
             m.chat,
             {
@@ -37588,7 +37597,7 @@ case 'ytmp4': {
                 mimetype: "video/mp4",
                 fileName: `${safeTitle}.mp4`,
                 caption,
-                thumbnail: video.thumbnail
+                thumbnail: data.result.thumbnail?.[0]?.url
             },
             { quoted: m }
         );
@@ -42208,4 +42217,5 @@ setInterval(() => {
     console.log("restart automatic...");
     process.exit();
 }, 10800000);
+
 
