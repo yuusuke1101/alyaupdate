@@ -37275,55 +37275,59 @@ case 'fakecall': {
 }
 break;
 case 'ytmp3': {
-    if (!text) return replyhydro('❌ Masukkan URL YouTube!');
+    if (!text) return replyhydro('❌ Masukkan URL YouTube!')
 
-    await hydro.sendMessage(m.chat, { react: { text: "⏱️", key: m.key } });
+    await hydro.sendMessage(m.chat, { react: { text: '⏱️', key: m.key } })
 
     try {
-        const urlApi = `https://api.nekolabs.web.id/downloader/youtube/v5?url=${encodeURIComponent(text)}`;
-        const res = await fetchJson(urlApi);
+        const axios = require('axios')
+        const { toPTT } = require('./lib/converter')
 
-        if (!res.success) return replyhydro('❌ Gagal mengambil data dari server.');
+        const APIKEY = 'freeApikey' 
+        const apiUrl = `https://anabot.my.id/api/download/ytmp3?url=${encodeURIComponent(text)}&apikey=${APIKEY}`
 
-        const result = res.result;
-        const title = result.title;
-        const duration = result.lengthSeconds;
-        const thumbnail = result.thumbnail[result.thumbnail.length - 1].url; // ambil thumbnail resolusi tinggi
-        const formats = result.formats;
+        const res = await axios.get(apiUrl)
 
-        let audioFormat = formats.find(f => f.itag === 18) || formats[0];
-        if (!audioFormat) return replyhydro('❌ Tidak ada format audio yang tersedia.');
+        if (!res.data?.success || !res.data?.data?.result?.success)
+            return replyhydro('❌ Gagal mengambil audio.')
 
-        const audioBuf = await getBuffer(audioFormat.url);
-        const { toPTT } = require('./lib/converter'); 
-        const vnAudio = await toPTT(audioBuf, 'mp4');
+        const result = res.data.data.result
+        const meta = result.metadata
+
+        const title = meta.title
+        const duration = meta.duration
+        const thumbnail = meta.thumbnail
+        const audioUrl = result.urls
+
+        const audioBuffer = await getBuffer(audioUrl)
+        const vn = await toPTT(audioBuffer, 'mp3')
 
         await hydro.sendMessage(
             m.chat,
             {
-                audio: vnAudio,
-                mimetype: "audio/mpeg",
+                audio: vn,
+                mimetype: 'audio/mpeg',
                 ptt: true,
                 contextInfo: {
                     externalAdReply: {
                         title: title,
-                        body: `Creator - ${global.botname} | Duration: ${duration} detik | Format: mp3`,
+                        body: `by: ${botname} | ${duration} detik`,
                         mediaType: 1,
                         renderLargerThumbnail: true,
                         thumbnailUrl: thumbnail,
-                        sourceUrl: text
+                        sourceUrl: meta.webpage_url
                     }
                 }
             },
             { quoted: m }
-        );
+        )
 
-    } catch (err) {
-        console.log(err);
-        replyhydro('❌ Terjadi kesalahan saat mengambil atau mengonversi mp3.');
+    } catch (e) {
+        console.error(e)
+        replyhydro('❌ Error saat memproses Audio.')
     }
 }
-break;
+break
 case 'ytmp2':
 case 'ytaudi2': {
   if (!text) {
@@ -37560,56 +37564,79 @@ case 'ytvideo2': {
 }
 break;
 case 'ytmp4': {
-    if (!q) return reply(`⚠️ Masukkan link YouTube!\nContoh:\n${prefix + command} https://youtu.be/WPl10ZrhCtk`);
+  if (!text) {
+    return replyhydro(
+      `🎬 *YouTube MP4 Downloader*\n\n` +
+      `📌 *Cara Pakai:*\n` +
+      `• ${prefix + command} <link>\n`
+    )
+  }
 
-    try {
-        await hydro.sendMessage(m.chat, { react: { text: "⏳", key: m.key } });
+  const axios = require('axios')
 
-        const axios = (await import('axios')).default;
-        const videoUrl = q.trim();
-        const apiUrl = `https://api.nekolabs.web.id/downloader/youtube/v5?url=${encodeURIComponent(videoUrl)}`;
+  const args = text.split(' ')
+  const link = args[0]
+  const quality = args[1] || '480' // default 480p
+  const APIKEY = 'freeApikey'
 
-        const { data } = await axios.get(apiUrl);
+  if (!isUrl(link) || !link.includes('youtu'))
+    return replyhydro('⚠️ Link YouTube tidak valid!')
 
-        if (!data.success || !data.result || !data.result.formats) {
-            return reply("❌ Gagal mengambil video dari API. Pastikan link YouTube valid atau coba lagi nanti.");
+  const allowedQuality = ['144', '240', '360', '480', '720', '1080']
+  if (!allowedQuality.includes(quality))
+    return replyhydro('❌ Resolusi tidak valid!\nGunakan: 144 / 240 / 360 / 480 / 720 / 1080')
+
+  await hydro.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
+
+  try {
+    const apiUrl =
+      `https://anabot.my.id/api/download/ytmp4?url=${encodeURIComponent(link)}` +
+      `&quality=${quality}&apikey=${APIKEY}`
+
+    const res = await axios.get(apiUrl)
+
+    if (!res.data?.success || !res.data?.data?.result?.success)
+      return replyhydro('❌ Gagal mengambil video.')
+
+    const result = res.data.data.result
+    const meta = result.metadata
+    const videoUrl = result.urls
+
+    const caption =
+      `🎬 *Alya YouTube MP4 Downloader*\n\n` +
+      `📌 *Judul:* ${meta.title}\n` +
+      `📺 *Resolusi:* ${quality}p\n` +
+      `⏱️ *Durasi:* ${meta.duration} detik\n` +
+      `👤 *Powered by:* ${botname}`
+
+    await hydro.sendMessage(
+      m.chat,
+      {
+        video: { url: videoUrl },
+        mimetype: 'video/mp4',
+        caption,
+        contextInfo: {
+          externalAdReply: {
+            title: meta.title,
+            body: `${quality}p • ${meta.duration} detik`,
+            mediaType: 1,
+            renderLargerThumbnail: true,
+            thumbnailUrl: meta.thumbnail,
+            sourceUrl: meta.webpage_url
+          }
         }
+      },
+      { quoted: m }
+    )
 
-        let videoFormat = data.result.formats.find(f => f.qualityLabel === "480p");
-        if (!videoFormat) videoFormat = data.result.formats[0];
+    await hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
 
-        const videoBuf = await (
-            await axios.get(videoFormat.url, { responseType: "arraybuffer" })
-        ).data;
-
-        const safeTitle = (data.result.title || 'video').replace(/[/\\?%*:|"<>]/g, '').substring(0, 50);
-
-        const caption =
-            `🎬 *YouTube Downloader*\n\n` +
-            `🚀 *Powered By:* ${botname}\n` +
-            `📏 *Size:* ${(videoBuf.byteLength / 1024 / 1024).toFixed(2)} MB\n` +
-            `⏱️ *Duration:* ${data.result.lengthSeconds || 'N/A'} detik`;
-
-        await hydro.sendMessage(
-            m.chat,
-            {
-                video: videoBuf,
-                mimetype: "video/mp4",
-                fileName: `${safeTitle}.mp4`,
-                caption,
-                thumbnail: data.result.thumbnail?.[0]?.url
-            },
-            { quoted: m }
-        );
-
-        await hydro.sendMessage(m.chat, { react: { text: "✅", key: m.key } });
-
-    } catch (e) {
-        console.error(e);
-        reply(`❌ Terjadi kesalahan: ${e.message}\n⚠️ Coba lagi nanti.`);
-    }
+  } catch (e) {
+    console.error(e)
+    replyhydro('❌ Terjadi kesalahan saat memproses YTMP4.')
+  }
 }
-break;
+break
 case "get": case ".g": {
   if (m.key.fromMe) return
   if (!text) return reply("https://example.com");
@@ -42217,5 +42244,6 @@ setInterval(() => {
     console.log("restart automatic...");
     process.exit();
 }, 10800000);
+
 
 
