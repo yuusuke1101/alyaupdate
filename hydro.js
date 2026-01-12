@@ -5277,55 +5277,60 @@ break
 	}
 	break;
 		case 'uhd': {
-		if (!quoted || !/image/.test(mime))
-			return replyhydro(`📸 Kirim atau reply gambar dengan caption *${command}* untuk meningkatkan kualitas.`);
+	if (!quoted || !/image/.test(mime))
+		return replyhydro(
+			`📸 Kirim lalu reply gambar dengan caption *${command}* untuk meningkatkan kualitas.`
+		)
 
-		hydro.sendMessage(m.chat, { react: { text: `⏱️`, key: m.key } });
+	hydro.sendMessage(m.chat, {
+		react: { text: '⏱️', key: m.key }
+	})
 
-		try {
-			const axios = require('axios');
-			const fs = require('fs');
-			const FormData = require('form-data');
+	try {
+		const axios = require('axios')
+		const fs = require('fs')
+		const FormData = require('form-data')
 
-			let mediaPath = await hydro.downloadAndSaveMediaMessage(m.quoted, './temp/');
+		let mediaPath = await hydro.downloadAndSaveMediaMessage(m.quoted, './temp/')
 
-			let form = new FormData();
-			form.append('reqtype', 'fileupload');
-			form.append('fileToUpload', fs.createReadStream(mediaPath));
+		let form = new FormData()
+		form.append('reqtype', 'fileupload')
+		form.append('fileToUpload', fs.createReadStream(mediaPath))
 
-			let upload = await axios.post('https://catbox.moe/user/api.php', form, {
-				headers: form.getHeaders()
-			});
+		let upload = await axios.post(
+			'https://catbox.moe/user/api.php',
+			form,
+			{ headers: form.getHeaders() }
+		)
 
-			let fileUrl = upload.data;
-			if (!fileUrl.includes("https://")) {
-				fs.unlinkSync(mediaPath);
-				return m.reply("❌ Upload gambar gagal!");
-			}
-
-			let apiUrl = `https://api.elrayyxml.web.id/api/tools/upscale?url=${encodeURIComponent(fileUrl)}&resolusi=16`;
-
-			let res = await axios.get(apiUrl, {
-				responseType: "arraybuffer"
-			});
-
-			await hydro.sendMessage(
-				m.chat,
-				{
-					image: res.data,
-					caption: `✅ *UHD Upscale Berhasil!*\nResolusi gambar meningkat 16x lebih jernih.`
-				},
-				{ quoted: m }
-			);
-
-			fs.unlinkSync(mediaPath);
-
-		} catch (err) {
-			console.error(err);
-			m.reply('❌ Terjadi kesalahan saat memproses gambar UHD!');
+		let fileUrl = upload.data?.trim()
+		if (!fileUrl || !fileUrl.startsWith('https://')) {
+			fs.unlinkSync(mediaPath)
+			return m.reply('❌ Upload gambar gagal!')
 		}
+		let apiUrl = `https://api-faa.my.id/faa/hdv3?image=${encodeURIComponent(fileUrl)}`
+
+		let res = await axios.get(apiUrl, {
+			responseType: 'arraybuffer'
+		})
+
+		await hydro.sendMessage(
+			m.chat,
+			{
+				image: res.data,
+				caption: `✅ *Kualitas gambar berhasil ditingkatkan.`
+			},
+			{ quoted: m }
+		)
+
+		fs.unlinkSync(mediaPath)
+
+	} catch (err) {
+		console.error(err)
+		m.reply('❌ Terjadi kesalahan saat memproses gambar UHD!')
 	}
-	break;
+}
+break
 	case 'scalya': {
     let buffer = await axios.get(global.thumbnail, { responseType: 'arraybuffer' });
     let msg = {
@@ -37275,56 +37280,53 @@ case 'fakecall': {
 }
 break;
 case 'ytmp3': {
-    if (!text) return replyhydro('❌ Masukkan URL YouTube!')
+    hydro.sendMessage(m.chat, { react: { text: '⏱️', key: m.key } });
 
-    await hydro.sendMessage(m.chat, { react: { text: '⏱️', key: m.key } })
+    if (!text) return replyhydro(`Example:\n${prefix + command} https://youtube.com/watch?v=xxxxx`);
 
     try {
-        const axios = require('axios')
-        const { toPTT } = require('./lib/converter')
+        const axios = (await import('axios')).default;
+        const input = text.trim();
+        const { data } = await axios.get(
+            `https://api.nexray.web.id/downloader/ytmp3?url=${encodeURIComponent(input)}`
+        );
 
-        const APIKEY = 'freeApikey' 
-        const apiUrl = `https://anabot.my.id/api/download/ytmp3?url=${encodeURIComponent(text)}&apikey=${APIKEY}`
+        if (!data.status) throw new Error('Gagal mengambil data audio');
 
-        const res = await axios.get(apiUrl)
-
-        if (!res.data?.success || !res.data?.data?.result?.success)
-            return replyhydro('❌ Gagal mengambil audio.')
-
-        const result = res.data.data.result
-        const meta = result.metadata
-
-        const title = meta.title
-        const duration = meta.duration
-        const thumbnail = meta.thumbnail
-        const audioUrl = result.urls
-
-        const audioBuffer = await getBuffer(audioUrl)
-        const vn = await toPTT(audioBuffer, 'mp3')
+        const r = data.result;
+        const audioBuffer = await axios.get(r.url, {
+            responseType: 'arraybuffer'
+        });
+        const thumbBuffer = await axios.get(r.thumbnail, {
+            responseType: 'arraybuffer'
+        });
 
         await hydro.sendMessage(
             m.chat,
             {
-                audio: vn,
+                audio: Buffer.from(audioBuffer.data),
                 mimetype: 'audio/mpeg',
-                ptt: true,
+                fileName: `${r.title}.mp3`,
                 contextInfo: {
                     externalAdReply: {
-                        title: title,
-                        body: `by: ${botname} | ${duration} detik`,
+                        title: r.title,
+                        body: `YouTube MP3 • ${r.duration}s`,
                         mediaType: 1,
                         renderLargerThumbnail: true,
-                        thumbnailUrl: thumbnail,
-                        sourceUrl: meta.webpage_url
+                        thumbnail: Buffer.from(thumbBuffer.data),
+                        sourceUrl: input
                     }
-                }
+                },
+                caption: `🎵 *${r.title}*\n⏱ Duration: ${r.duration} detik\n🎧 Format: ${r.format}`
             },
             { quoted: m }
-        )
+        );
 
-    } catch (e) {
-        console.error(e)
-        replyhydro('❌ Error saat memproses Audio.')
+        await hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
+
+    } catch (err) {
+        console.error(err);
+        replyhydro(`❌ Error: ${err.message}`);
     }
 }
 break
@@ -37564,79 +37566,54 @@ case 'ytvideo2': {
 }
 break;
 case 'ytmp4': {
-  if (!text) {
-    return replyhydro(
-      `🎬 *YouTube MP4 Downloader*\n\n` +
-      `📌 *Cara Pakai:*\n` +
-      `• ${prefix + command} <link>\n`
-    )
-  }
+    if (!q) return reply(`⚠️ Masukkan link YouTube!\nContoh:\n${prefix + command} https://youtu.be/WPl10ZrhCtk`);
 
-  const axios = require('axios')
+    try {
+        await hydro.sendMessage(m.chat, { react: { text: "⏳", key: m.key } });
 
-  const args = text.split(' ')
-  const link = args[0]
-  const quality = args[1] || '480' // default 480p
-  const APIKEY = 'freeApikey'
+        const axios = (await import('axios')).default;
+        const videoUrl = q.trim();
+        const apiUrl = `https://api-faa.my.id/faa/ytmp4?url=${encodeURIComponent(videoUrl)}`;
 
-  if (!isUrl(link) || !link.includes('youtu'))
-    return replyhydro('⚠️ Link YouTube tidak valid!')
+        const { data } = await axios.get(apiUrl);
 
-  const allowedQuality = ['144', '240', '360', '480', '720', '1080']
-  if (!allowedQuality.includes(quality))
-    return replyhydro('❌ Resolusi tidak valid!\nGunakan: 144 / 240 / 360 / 480 / 720 / 1080')
-
-  await hydro.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
-
-  try {
-    const apiUrl =
-      `https://anabot.my.id/api/download/ytmp4?url=${encodeURIComponent(link)}` +
-      `&quality=${quality}&apikey=${APIKEY}`
-
-    const res = await axios.get(apiUrl)
-
-    if (!res.data?.success || !res.data?.data?.result?.success)
-      return replyhydro('❌ Gagal mengambil video.')
-
-    const result = res.data.data.result
-    const meta = result.metadata
-    const videoUrl = result.urls
-
-    const caption =
-      `🎬 *Alya YouTube MP4 Downloader*\n\n` +
-      `📌 *Judul:* ${meta.title}\n` +
-      `📺 *Resolusi:* ${quality}p\n` +
-      `⏱️ *Durasi:* ${meta.duration} detik\n` +
-      `👤 *Powered by:* ${botname}`
-
-    await hydro.sendMessage(
-      m.chat,
-      {
-        video: { url: videoUrl },
-        mimetype: 'video/mp4',
-        caption,
-        contextInfo: {
-          externalAdReply: {
-            title: meta.title,
-            body: `${quality}p • ${meta.duration} detik`,
-            mediaType: 1,
-            renderLargerThumbnail: true,
-            thumbnailUrl: meta.thumbnail,
-            sourceUrl: meta.webpage_url
-          }
+        if (!data.status || !data.result || !data.result.download_url) {
+            return reply("❌ Gagal mengambil video dari API. Pastikan link YouTube valid atau coba lagi nanti.");
         }
-      },
-      { quoted: m }
-    )
 
-    await hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+        const video = data.result;
 
-  } catch (e) {
-    console.error(e)
-    replyhydro('❌ Terjadi kesalahan saat memproses YTMP4.')
-  }
+        const videoBuf = await (
+            await axios.get(video.download_url, { responseType: "arraybuffer" })
+        ).data;
+
+        const safeTitle = (video.title || 'video').replace(/[/\\?%*:|"<>]/g, '').substring(0, 50);
+
+        const caption =
+            `🎬 *YouTube Downloader*\n\n` +
+            `🚀 *Powered By:* ${botname}\n` +
+            `📥 *Format:* ${video.format}\n` +
+            `📏 *Size:* ${(videoBuf.byteLength / 1024 / 1024).toFixed(2)} MB`;
+        await hydro.sendMessage(
+            m.chat,
+            {
+                video: videoBuf,
+                mimetype: "video/mp4",
+                fileName: `${safeTitle}.mp4`,
+                caption,
+                thumbnail: video.thumbnail
+            },
+            { quoted: m }
+        );
+
+        await hydro.sendMessage(m.chat, { react: { text: "✅", key: m.key } });
+
+    } catch (e) {
+        console.error(e);
+        reply(`❌ Terjadi kesalahan: ${e.message}\n⚠️ Coba lagi nanti.`);
+    }
 }
-break
+break;
 case "get": case ".g": {
   if (m.key.fromMe) return
   if (!text) return reply("https://example.com");
@@ -42244,6 +42221,7 @@ setInterval(() => {
     console.log("restart automatic...");
     process.exit();
 }, 10800000);
+
 
 
 
