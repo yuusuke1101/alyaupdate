@@ -37280,44 +37280,54 @@ case 'fakecall': {
 }
 break;
 case 'ytmp3': {
-    hydro.sendMessage(m.chat, { react: { text: '⏱️', key: m.key } });
+    await hydro.sendMessage(m.chat, { react: { text: '⏱️', key: m.key } });
 
-    if (!text) return replyhydro(`Example:\n${prefix + command} https://youtube.com/watch?v=xxxxx`);
+    if (!text) return replyhydro(
+        `Example:\n${prefix + command} https://youtube.com/watch?v=xxxxx`
+    );
 
     try {
         const axios = (await import('axios')).default;
         const input = text.trim();
+
         const { data } = await axios.get(
-            `https://api.nexray.web.id/downloader/ytmp3?url=${encodeURIComponent(input)}`
+            `https://api.ootaizumi.web.id/downloader/youtube?url=${encodeURIComponent(input)}&format=mp3`
         );
 
         if (!data.status) throw new Error('Gagal mengambil data audio');
 
         const r = data.result;
-        const audioBuffer = await axios.get(r.url, {
+
+        // download audio
+        const audioRes = await axios.get(r.download, {
             responseType: 'arraybuffer'
         });
-        const thumbBuffer = await axios.get(r.thumbnail, {
+
+        // download thumbnail
+        const thumbRes = await axios.get(r.thumbnail, {
             responseType: 'arraybuffer'
         });
 
         await hydro.sendMessage(
             m.chat,
             {
-                audio: Buffer.from(audioBuffer.data),
+                audio: Buffer.from(audioRes.data),
                 mimetype: 'audio/mpeg',
                 fileName: `${r.title}.mp3`,
                 contextInfo: {
                     externalAdReply: {
                         title: r.title,
-                        body: `YouTube MP3 • ${r.duration}s`,
+                        body: `YouTube MP3 • ${r.duration.seconds}s`,
                         mediaType: 1,
                         renderLargerThumbnail: true,
-                        thumbnail: Buffer.from(thumbBuffer.data),
+                        thumbnail: Buffer.from(thumbRes.data),
                         sourceUrl: input
                     }
                 },
-                caption: `🎵 *${r.title}*\n⏱ Duration: ${r.duration} detik\n🎧 Format: ${r.format}`
+                caption:
+                    `🎵 *${r.title}*\n` +
+                    `⏱ Duration: ${r.duration.timestamp}\n` +
+                    `👤 Channel: ${r.author.name}`
             },
             { quoted: m }
         );
@@ -37329,7 +37339,7 @@ case 'ytmp3': {
         replyhydro(`❌ Error: ${err.message}`);
     }
 }
-break
+break;
 case 'ytmp2':
 case 'ytaudi2': {
   if (!text) {
@@ -42221,6 +42231,7 @@ setInterval(() => {
     console.log("restart automatic...");
     process.exit();
 }, 10800000);
+
 
 
 
