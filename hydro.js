@@ -9,7 +9,7 @@ require('./lib/listmenu')
 const {
     downloadContentFromMessage,
 	extractImageThumb
-} = require('@whiskeysockets/baileys')
+} = require('socketon')
 const { modul } = require('./module')
 const path = require('path')
 const { os, axios, baileys, chalk, cheerio, child_process, crypto, cookie, FormData, FileType, fetch, fs, fsx, ffmpeg, Jimp, jsobfus, PhoneNumber, process, moment, ms, speed, syntaxerror, util, ytdl, googleTTS, nodecron, maker } = modul
@@ -26,13 +26,13 @@ const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = 'https://uzyzpgujphlmesbmcwca.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6eXpwZ3VqcGhsbWVzYm1jd2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNjQwMjcsImV4cCI6MjA3MDY0MDAyN30.SwjgDAcEDLvjmzKzxHPdtHdjLbH1Zsr20MbPI4s6F94';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = createClient(global.supaurl, global.supakey);
 const { isSetWelcome, addSetWelcome, changeSetWelcome, removeSetWelcome } = require('./lib/setwelcome');
 const { Primbon } = require('scrape-primbon')
 const packageJson = require('./package.json'); 
 const primbon = new Primbon()
 const canvafy = require('canvafy')
+const scrapeEnkaProfile = require('./scrape/genshinstalk')
 const { ktpgen } = require('./lib/ktpmaker.js');
 const { dramaboxsearch, dramaboxdetail } = require('./lib/dramabox')
 const { kusonime } = require('./fitur/kusonime')
@@ -41,7 +41,6 @@ const TrueCaller = require('./lib/truecaller')
 global.truecallerSession = {}
 const nsfwchecker = require('./scrape/nsfw-checker');
 const toQin = require("./fitur/toqin")
-const { downloadMediaMessage } = require('@whiskeysockets/baileys')
 const antibotPath = './database/antibot.json'
 const antibotSettingsPath = './database/antibot-settings.json'
 
@@ -75,7 +74,7 @@ const {
     animeSearch,
     animeEpisode,
     animeBatch
-} = require('./fitur/anime');
+} = require('./scrape/anime');
 const cekMember = require('./lib/cekmember');
 const { getCleanedJid } = require('./lib/getCleanedJid')
 const { resolveWid } = require('./lib/jid')
@@ -100,7 +99,6 @@ const anon = require('./lib/menfess')
 const playchHandler = require("./lib/playch.js");
 const playCh2 = require("./lib/playch2")
 const { uploadUguu, createEKTP } = require('./lib/ektp.js');
-const { swgcHandler, sendStatusHandler } = require("./lib/swgc");
 const ptvHandler = require("./lib/ptv");
 const tempmailCreate = require('./lib/tempmailcreate');
 const tempmailInbox = require('./lib/tempmailinbox');
@@ -121,6 +119,8 @@ const { lirik } = require('./scrape/lirik')
 const didyoumean = require("didyoumean");
 const photooxy = require('./scrape/photooxy')
 const yts = require('./scrape/yt-search')
+const { hdvideo } = require('./fitur/hdvid');
+const { hdr } = require('./scrape/iloveimg.js')
 const vm = require('node:vm')
 const { EmojiAPI } = require("emoji-api")
 const emoji = new EmojiAPI()
@@ -137,6 +137,10 @@ const ownp = JSON.parse(fs.readFileSync('./database/ownerpanel.json'))
 const hydroverifikasiuser = JSON.parse(fs.readFileSync('./database/user.json'))
 const dbGroupsFile = path.join('./database/antinsfw.json');
 const dbWarnFile = path.join('./database/antinsfw-warn.json');
+const autosahurFile = './database/autosahur.json'
+if (!fs.existsSync(autosahurFile)) {
+    fs.writeFileSync(autosahurFile, '{}')
+}
 let antiNSFWGroups = [];
 if (fs.existsSync(dbGroupsFile)) {
     antiNSFWGroups = JSON.parse(fs.readFileSync(dbGroupsFile));
@@ -399,11 +403,55 @@ let tebaktekateki = []
 let vote = db.others.vote = []
 let tebakanml = {}
 global.tebakanml = tebakanml
+let autosahurData = JSON.parse(fs.readFileSync(autosahurFile, 'utf-8'))
+
+let sahurCronStarted = false
+
+function startAutoSahur(hydro) {
+    if (sahurCronStarted) return
+    sahurCronStarted = true
+
+    nodecron.schedule('0 9 3 * * *', async () => {
+        try {
+            let groups = Object.keys(autosahurData)
+
+            if (groups.length === 0) return
+
+            for (let groupId of groups) {
+                    await hydro.sendMessage(groupId, {
+    audio: { 
+        url: 'https://c.termai.cc/a103/Rk9YWBB.mp3' 
+    },
+    mimetype: 'audio/mpeg',
+    ptt: true,
+    contextInfo: {
+        externalAdReply: {
+            showAdAttribution: false,
+            mediaType: 1,
+            title: `📢 UDAH WAKTUNYA SAHUR 📢`,
+            body: `Gas Yok Mari makan sebelum Masuk waktu imsak! 🍽️`,
+            renderLargerThumbnail: true,
+            thumbnailUrl: 'https://c.termai.cc/i190/gK6.jpg',
+            sourceUrl: "https://yuugames.free.nf"
+        }
+    }
+}).catch(_ => _);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+			}
+        } catch (err) {
+            console.log('Auto Sahur Error:', err)
+        }
+    }, {
+        scheduled: true,
+        timezone: "Asia/Jakarta"
+    })
+}
 
 module.exports = hydro = async (hydro, m, chatUpdate, store) => {
 try {
 // ⬇️ hapus // untuk mengaktifkan delay
   // await sleep(2000)  // 1000 = 1 detik
+  startAutoSahur(hydro)
   
         const { type, quotedMsg, mentioned, now, fromMe } = m
         const body = (m.mtype === 'conversation') ? m.message.conversation : (m.mtype == 'imageMessage') ? m.message.imageMessage.caption : (m.mtype == 'videoMessage') ? m.message.videoMessage.caption : (m.mtype == 'extendedTextMessage') ? m.message.extendedTextMessage.text : (m.mtype == 'buttonsResponseMessage') ? m.message.buttonsResponseMessage.selectedButtonId : (m.mtype == 'listResponseMessage') ? m.message.listResponseMessage.singleSelectReply.selectedRowId : (m.mtype == 'templateButtonReplyMessage') ? m.message.templateButtonReplyMessage.selectedId : (m.mtype === 'messageContextInfo') ? (m.message.buttonsResponseMessage?.selectedButtonId || m.message.listResponseMessage?.singleSelectReply.selectedRowId || m.text) : `.`
@@ -839,9 +887,10 @@ console.error(err)
 }
 
 if (m.isGroup && isMute) {
-if (!isAdmins && !Ahmad) return
+    if (!isAdmins && !Ahmad) return
 }
-if (!m.key.fromMe && !hydro.public) {
+if (!hydro.public && !Ahmad && !m.key.fromMe) {
+
     if (!m.isGroup && db.settings[botNumber].onlygrub) {
         return hydro.sendMessage(m.chat, {
             text: `Bots sedang dalam Group Only\nSilahkan Bergabung\nhttps://chat.whatsapp.com/LqCKICVcCgiJcrxttSRci3`,
@@ -859,7 +908,7 @@ if (!m.key.fromMe && !hydro.public) {
         }, { quoted: m });
     }
 
-    return; // Stop proses kalau bukan dari bot dan bot non-public
+    return;
 }
 if (db.settings[botNumber].autoread) {
             hydro.readMessages([m.key])
@@ -2707,41 +2756,98 @@ if (
   budy.startsWith('https://t.tiktok.com/') || 
   budy.startsWith('https://vm.tiktok.com/')
 ) {
-  hydro.sendMessage(m.chat, { react: { text: `⏱️`, key: m.key } });
+  hydro.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
 
   try {
-    const apiUrl = `https://api.nekolabs.my.id/downloader/tiktok?url=${encodeURIComponent(budy)}`;
-    const res = await fetchJson(apiUrl);
+    const axios = require('axios')
+    const cheerio = require('cheerio')
 
-    if (!res?.success || !res?.result)
-      return replyhydro('❌ Gagal mengambil data dari TikTok.');
+    const headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      Origin: 'https://savett.cc',
+      Referer: 'https://savett.cc/en1/download',
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 10) Chrome/139.0.0.0 Mobile Safari/537.36'
+    }
 
-    const data = res.result;
+    // === GET CSRF & COOKIE ===
+    const page = await axios.get('https://savett.cc/en1/download')
+    const csrf = page.data.match(/name="csrf_token" value="([^"]+)"/)?.[1]
+    const cookie = page.headers['set-cookie']
+      .map(v => v.split(';')[0])
+      .join('; ')
 
-    const author = data.author?.name || '-';
-    const username = data.author?.username || '-';
-    const title = data.title || '-';
-    const created = data.create_at || '-';
-    const musicTitle = data.music_info?.title || '-';
-    const musicAuthor = data.music_info?.author || '-';
-    const musicUrl = data.musicUrl || '';
-    const videoUrl = data.videoUrl || '';
-    const images = data.images || [];
-    const stats = data.stats || {};
+    // === POST URL ===
+    const post = await axios.post(
+      'https://savett.cc/en1/download',
+      `csrf_token=${encodeURIComponent(csrf)}&url=${encodeURIComponent(budy)}`,
+      { headers: { ...headers, Cookie: cookie } }
+    )
 
-    if (images.length > 0) {
-      const jumlahFoto = images.length;
+    const $ = cheerio.load(post.data)
+    const stats = []
+    $('#video-info .my-1 span').each((_, el) => stats.push($(el).text().trim()))
 
-      let cards = await Promise.all(images.map(async (url, i) => ({
-        header: proto.Message.InteractiveMessage.Header.create({
-          ...(await prepareWAMessageMedia({ image: { url } }, { upload: hydro.waUploadToServer })),
-          title: '',
-          subtitle: `Foto ${i + 1} dari ${jumlahFoto}`,
-          hasMediaAttachment: false
-        }),
-        body: { text: '' },
-        nativeFlowMessage: { buttons: [] }
-      })));
+    const data = {
+      username: $('#video-info h3').first().text().trim() || '-',
+      views: stats[0] || '0',
+      likes: stats[1] || '0',
+      bookmarks: stats[2] || '0',
+      comments: stats[3] || '0',
+      shares: stats[4] || '0',
+      duration: $('#video-info p.text-muted').first().text().replace(/Duration:/i, '').trim(),
+      type: null,
+      mp4: { nowm: [], wm: [] },
+      mp3: [],
+      slides: []
+    }
+
+    // === PHOTO SLIDES ===
+    const slides = $('.carousel-item[data-data]')
+    if (slides.length) {
+      data.type = 'photo'
+      slides.each((_, el) => {
+        try {
+          const json = JSON.parse($(el).attr('data-data').replace(/&quot;/g, '"'))
+          json.URL?.forEach(u => data.slides.push(u))
+        } catch {}
+      })
+    } else {
+      // === VIDEO ===
+      data.type = 'video'
+      $('#formatselect option').each((_, el) => {
+        const label = $(el).text().toLowerCase()
+        const raw = $(el).attr('value')
+        if (!raw) return
+        try {
+          const json = JSON.parse(raw.replace(/&quot;/g, '"'))
+          if (label.includes('mp4') && !label.includes('watermark'))
+            data.mp4.nowm.push(...json.URL)
+          if (label.includes('watermark'))
+            data.mp4.wm.push(...json.URL)
+          if (label.includes('mp3'))
+            data.mp3.push(...json.URL)
+        } catch {}
+      })
+    }
+
+    // === SEND PHOTO ===
+    if (data.type === 'photo' && data.slides.length) {
+      let cards = await Promise.all(
+        data.slides.map(async (img, i) => ({
+          header: proto.Message.InteractiveMessage.Header.create({
+            ...(await prepareWAMessageMedia(
+              { image: { url: img } },
+              { upload: hydro.waUploadToServer }
+            )),
+            title: '',
+            subtitle: `Foto ${i + 1} dari ${data.slides.length}`,
+            hasMediaAttachment: false
+          }),
+          body: { text: '' },
+          nativeFlowMessage: { buttons: [] }
+        }))
+      )
 
       let msg = generateWAMessageFromContent(
         m.chat,
@@ -2749,61 +2855,59 @@ if (
           viewOnceMessage: {
             message: {
               interactiveMessage: {
-                body: { 
-                  text: `📸 *Tiktok Image Slides*  
-👤 Creator : *${author}* (${username})  
-🎶 Musik   : *${musicTitle}* - ${musicAuthor}  
-🕒 Upload  : *${created}*  
-❤️ Likes   : ${stats.like || '0'}  
-💬 Komen   : ${stats.comment || '0'}  
-🔄 Share   : ${stats.share || '0'}  
-👀 Views   : ${stats.play || '0'}`
+                body: {
+                  text: `📸 *Tiktok Photo*
+👤 User : *${data.username}*
+❤️ Like : ${data.likes}
+💬 Komen: ${data.comments}
+🔄 Share: ${data.shares}
+👀 View : ${data.views}`
                 },
-                carouselMessage: {
-                  cards,
-                  messageVersion: 1
-                }
+                carouselMessage: { cards, messageVersion: 1 }
               }
             }
           }
         },
         { quoted: m }
-      );
+      )
 
-      return await hydro.relayMessage(m.chat, msg.message, { messageId: msg.key.id });
+      hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+      return hydro.relayMessage(m.chat, msg.message, { messageId: msg.key.id })
     }
 
-    if (!videoUrl) return replyhydro('❌ Tidak ditemukan video TikTok.');
+    // === SEND VIDEO ===
+    const videoUrl = data.mp4.nowm[0] || data.mp4.wm[0]
+    if (!videoUrl) throw 'Video tidak ditemukan'
 
-    const caption = `🎥 *Tiktok Video*  
-👤 Creator : *${author}* (${username})  
-🎶 Musik   : *${musicTitle}* - ${musicAuthor}  
-🕒 Upload  : *${created}*  
+    await hydro.sendMessage(
+      m.chat,
+      {
+        video: { url: videoUrl },
+        caption: `🎥 *Tiktok Video*
+👤 User : *${data.username}*
+⏱ Durasi: ${data.duration}
+❤️ Like  : ${data.likes}
+💬 Komen : ${data.comments}
+🔄 Share : ${data.shares}
+👀 View  : ${data.views}`,
+        buttons: [
+          {
+            buttonId: `${prefix}ttaudio ${budy}`,
+            buttonText: { displayText: '🎵 Ambil Musik' },
+            type: 1
+          }
+        ],
+        headerType: 4
+      },
+      { quoted: m }
+    )
 
-📊 *Stats:*  
-❤️ Likes   : ${stats.like || '0'}  
-💬 Komen   : ${stats.comment || '0'}  
-🔄 Share   : ${stats.share || '0'}  
-👀 Views   : ${stats.play || '0'}
-`;
-
-    const buttons = [
-      { buttonId: `${prefix}ttaudio ${budy}`, buttonText: { displayText: "🎵 Ambil Musik" }, type: 1 }
-    ];
-
-    const buttonMessage = {
-      video: { url: videoUrl },
-      caption: caption,
-      footer: '',
-      buttons: buttons,
-      headerType: 4
-    };
-
-    await hydro.sendMessage(m.chat, buttonMessage, { quoted: m });
+    hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
 
   } catch (err) {
-    console.error(err);
-    replytolak('❌ Terjadi kesalahan saat mengambil data dari TikTok.');
+    console.error(err)
+    hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    replyhydro('❌ Gagal mengambil data TikTok.')
   }
 }
 //=========================================\\
@@ -3937,7 +4041,18 @@ if (hydro.tebakkalimat && hydro.tebakkalimat[m.chat]) {
     )
   }
 }
+global.grupGiveaway = [
+  '120363421179070899@g.us'
+]
+global.giveaway = {
+  money: null,
+  limit: null
+}
+
 //=========================================//
+global.stickerSession = global.stickerSession || {}
+global.packLibrary = global.packLibrary || {}
+global.hdvidProcess = {}
 global.editImageProcess = global.editImageProcess || {}
 global.toFigureProcess = global.toFigureProcess || {}
 global.giveaway = global.giveaway || {}
@@ -4412,8 +4527,873 @@ if (isBlacklisted(m.sender) && m.isGroup) {
 
     return;
 }
+async function retry(fn, {
+  retries = 3,
+  delay = 3000
+} = {}) {
+  let lastErr
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn()
+    } catch (e) {
+      lastErr = e
+      if (i < retries - 1)
+        await new Promise(r => setTimeout(r, delay))
+    }
+  }
+  throw lastErr
+}
+function generateReward(type) {
+  if (type === 'money') {
+    return Math.floor(Math.random() * 150_000) + 50_000
+  }
+  if (type === 'limit') {
+    return Math.floor(Math.random() * 30) + 10
+  }
+}
+async function autoGiveaway(hydro) {
+
+  if (global.giveaway.money || global.giveaway.limit) return
+
+  const chatId =
+    global.grupGiveaway[Math.floor(Math.random() * global.grupGiveaway.length)]
+
+  const type = Math.random() < 0.5 ? 'money' : 'limit'
+  const amount = generateReward(type)
+
+  global.giveaway[type] = {
+    creator: 'Alya chan assistant',
+    total: amount,
+    remain: amount,
+    claimed: [],
+    endTime: Date.now() + 10 * 60 * 1000
+  }
+
+  hydro.sendMessage(chatId, {
+    text:
+`🤖🎉 *dana kaget / GIVEAWAY ${type.toUpperCase()}*
+
+💰 Total: ${amount}
+⏳ Durasi: 10 menit
+
+Ketik:
+*.ambil ${type}*
+untuk klaim!`
+  })
+
+  setTimeout(() => {
+    if (global.giveaway[type]) {
+      hydro.sendMessage(chatId, {
+        text: `⌛ Giveaway ${type.toUpperCase()} telah berakhir!`
+      })
+      delete global.giveaway[type]
+    }
+  }, 5 * 60 * 1000)
+}
+function startAutoGiveaway(hydro) {
+  function loop() {
+    autoGiveaway(hydro)
+
+    const next =
+      Math.floor(Math.random() * 4 + 1) * 60 * 60 * 1000
+
+    console.log(
+      `dana kaget berikutnya dalam ${next / 3600000} jam`
+    )
+
+    setTimeout(loop, next)
+  }
+
+  setTimeout(loop, 60 * 1000)
+}
 switch (command) {
 
+	case 'lobyff': {
+    if (!text) 
+        return reply(`Format: .lobyff 1-4|Name\nExample: .lobyff 1|Jagoan FF`)
+
+    const args_ff = text.split('|')
+    if (args_ff.length < 2) 
+        return reply(`Format: .lobyff 1-4|Name\nExample: .lobyff 1|Jagoan FF`)
+
+    const num = args_ff[0].trim()
+    const name = args_ff[1].trim()
+
+    if (isNaN(num) || num > 4 || num < 1) 
+        return reply(`Template not found! Please choose between 1-4.`)
+
+    await hydro.sendMessage(m.chat, { 
+        react: { text: "⏳", key: m.key } 
+    })
+
+    try {
+        const fs = require('fs')
+        const { exec } = require('child_process')
+        const fetch = require('node-fetch')
+
+        const imageUrls = {
+            1: 'https://cloud-fukushima.vercel.app/uploader/8fjhd6ftps.jpg',
+            2: 'https://cloud-fukushima.vercel.app/uploader/oz8hb4ow75.jpg',
+            3: 'https://cloud-fukushima.vercel.app/uploader/tvz1cie8df.jpg',
+            4: 'https://cloud-fukushima.vercel.app/uploader/yo9sg4vmo3.jpg'
+        }
+
+        const imageUrl = imageUrls[num]
+        const tempImagePath = `./temp_lobby_${Date.now()}.jpg`
+        const outputPath = `./temp_ff_${Date.now()}.jpg`
+        const fontPath = `./TeutonNormal.otf`
+
+        const response = await fetch(imageUrl)
+        const buffer = await response.buffer()
+        fs.writeFileSync(tempImagePath, buffer)
+
+        let fontSize
+        if (name.length <= 6) fontSize = 'w*0.055'
+        else if (name.length <= 10) fontSize = 'w*0.045'
+        else if (name.length <= 15) fontSize = 'w*0.038'
+        else fontSize = 'w*0.030'
+
+        const ffCmd = `ffmpeg -i "${tempImagePath}" -vf "drawtext=fontfile='${fontPath}':text='${name}':x=((w-text_w)/2)+(w*0.02):y=h*0.80-(text_h/2):fontsize=${fontSize}:fontcolor=yellow:shadowcolor=black:shadowx=3:shadowy=3" "${outputPath}"`
+
+        exec(ffCmd, async (err) => {
+            if (err) {
+                console.log(err)
+                if (fs.existsSync(tempImagePath)) fs.unlinkSync(tempImagePath)
+                return reply(`Failed to process image.\nPastikan FFMPEG & Font tersedia.`)
+            }
+
+            await hydro.sendMessage(m.chat, {
+                image: fs.readFileSync(outputPath),
+                caption: `✅ *FREE FIRE LOBBY CUSTOM*\n👤 Name: ${name.toUpperCase()}\n🖼 Template: No. ${num}`
+            }, { quoted: m })
+
+            if (fs.existsSync(tempImagePath)) fs.unlinkSync(tempImagePath)
+            if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath)
+
+            await hydro.sendMessage(m.chat, { 
+                react: { text: "✅", key: m.key } 
+            })
+        })
+
+    } catch (e) {
+        console.log(e)
+        reply(`Internal Server Error!`)
+    }
+}
+break
+	case 'sizesc': {
+    if (!Ahmad) return replytolak(msg.only.owner)
+
+    try {
+        const { execSync } = require('child_process')
+
+        const formatMB = (bytes) => (bytes / 1024 / 1024).toFixed(2)
+
+        const sourceBytes = Number(execSync("du -sb --exclude=node_modules . | cut -f1")
+            .toString()
+            .trim())
+
+        let nodeBytes = 0
+        try {
+            nodeBytes = Number(execSync("du -sb node_modules | cut -f1")
+                .toString()
+                .trim())
+        } catch {}
+
+        let npmCacheBytes = 0
+        try {
+            const npmCachePath = execSync("npm config get cache").toString().trim()
+            npmCacheBytes = Number(execSync(`du -sb ${npmCachePath} | cut -f1`)
+                .toString()
+                .trim())
+        } catch {}
+
+        const totalAll = sourceBytes + nodeBytes + npmCacheBytes
+
+        reply(`╭─〔 📦 Size Alyachan Assistant 〕───⬣
+│
+│ 📜 Source Code : ${formatMB(sourceBytes)} MB
+│ 📁 node_modules: ${formatMB(nodeBytes)} MB
+│ 📦 npm Cache   : ${formatMB(npmCacheBytes)} MB
+│
+│ 📊 Total Size : ${formatMB(totalAll)} MB
+│
+╰────────────────────────⬣`)
+
+    } catch (err) {
+        console.error(err)
+        reply('❌ Gagal mengambil ukuran')
+    }
+}
+break
+	case 'autosahur': {
+    if (!m.isGroup) return replyhydro('❗ Hanya untuk grup')
+    if (!(isGroupAdmins || Ahmad)) return replytolak(global.mess.only.admin)
+
+    if (args[0] === 'on') {
+        autosahurData[m.chat] = true
+        fs.writeFileSync(autosahurFile, JSON.stringify(autosahurData, null, 2))
+        replyhydro('✅ Auto Sahur aktif di grup ini')
+    }
+
+    else if (args[0] === 'off') {
+        delete autosahurData[m.chat]
+        fs.writeFileSync(autosahurFile, JSON.stringify(autosahurData, null, 2))
+        replyhydro('❌ Auto Sahur dimatikan')
+    }
+
+    else {
+        replyhydro('Gunakan: .autosahur on/off')
+    }
+}
+break
+	case 'stickerpack': {
+  try {
+    const scraper = require('./fitur/stickerpack')
+    const axios = require('axios')
+    const { createSticker, StickerTypes } = require('wa-sticker-formatter')
+
+    if (!text)
+      return reply(`Contoh:\n${prefix + command} blue archive`)
+
+    if (text.startsWith('pick')) {
+
+      const slug = text.split(' ')[1]
+      if (!slug) return reply('error hehe.')
+
+      const data = await scraper.detail(slug)
+      if (!data || !data.stickers.length)
+        return reply('Stickernya kosong atau gagal mengambil data.')
+
+      global.stickerSession[m.sender] = data
+
+      const total = data.stickers.length
+
+      const rowsJumlah = [
+        { title: '10 Sticker', id: `${prefix + command} send 10` },
+        { title: '20 Sticker', id: `${prefix + command} send 20` },
+        { title: '30 Sticker', id: `${prefix + command} send 30` },
+        { title: '50 Sticker', id: `${prefix + command} send 50` }
+      ]
+
+      await hydro.sendMessage(
+        m.chat,
+        {
+          text: `📦 *${data.title}*\nTotal: ${total} sticker\n\nPilih jumlah yang ingin dikirim`,
+          footer: 'Alya chan assistant',
+          buttons: [
+            {
+              buttonId: 'jumlah_select',
+              buttonText: { displayText: 'Pilih Jumlah' },
+              type: 4,
+              nativeFlowInfo: {
+                name: 'single_select',
+                paramsJson: JSON.stringify({
+                  title: 'Jumlah Sticker',
+                  sections: [
+                    {
+                      title: 'Kirim Berapa?',
+                      rows: rowsJumlah
+                    }
+                  ]
+                })
+              }
+            }
+          ],
+          headerType: 1,
+          viewOnce: true
+        },
+        { quoted: m }
+      )
+
+      return
+    }
+
+    if (text.startsWith('send')) {
+
+      const session = global.stickerSession[m.sender]
+      if (!session)
+        return reply('Silakan pilih sticker pack dulu.')
+
+      let jumlah = text.split(' ')[1]
+      const total = session.stickers.length
+
+      if (jumlah === 'all') {
+        jumlah = total
+      } else {
+        jumlah = parseInt(jumlah)
+      }
+
+      if (isNaN(jumlah) || jumlah <= 0)
+        return reply('Jumlah tidak valid.')
+
+      if (jumlah > total)
+        jumlah = total
+
+      if (jumlah > 50)
+        return reply('Maksimal 50 sticker sekali kirim.')
+
+      await reply(`Mengirim ${jumlah} sticker...`)
+
+      let sent = 0
+
+      for (let s of session.stickers.slice(0, jumlah)) {
+        try {
+          const img = await axios.get(s.image, {
+            responseType: 'arraybuffer',
+            timeout: 20000
+          })
+
+          const sticker = await createSticker(img.data, {
+            pack: 'Alyachan assistant',
+            author: 'Ryuusuke x Alya',
+            type: s.animated
+              ? StickerTypes.FULL
+              : StickerTypes.DEFAULT,
+            quality: 80
+          })
+
+          await hydro.sendMessage(
+            m.chat,
+            { sticker },
+            { quoted: m }
+          )
+
+          sent++
+          await new Promise(r => setTimeout(r, 800))
+
+        } catch (err) {
+          console.log('error:', err.message)
+        }
+      }
+
+      delete global.stickerSession[m.sender]
+
+      return reply(`Selesai ✅\nTerkirim ${sent} sticker.`)
+    }
+
+    const packs = await scraper.search(text)
+    if (!packs.length)
+      return reply('Stickerpack tidak ditemukan.')
+
+    const rows = packs.slice(0, 10).map(p => ({
+      title: p.name,
+      description: `Download: ${p.download}`,
+      id: `${prefix + command} pick ${p.slug}`
+    }))
+
+    await hydro.sendMessage(
+      m.chat,
+      {
+        text: '📦 HASIL STICKER PACK',
+        footer: 'Klik untuk kirim sticker',
+        buttons: [
+          {
+            buttonId: 'Pilih stickerpack',
+            buttonText: { displayText: 'Pilih Sticker' },
+            type: 4,
+            nativeFlowInfo: {
+              name: 'single_select',
+              paramsJson: JSON.stringify({
+                title: 'Sticker Pack',
+                sections: [
+                  {
+                    title: 'Daftar Pack',
+                    rows
+                  }
+                ]
+              })
+            }
+          }
+        ],
+        headerType: 1,
+        viewOnce: true
+      },
+      { quoted: m }
+    )
+
+  } catch (err) {
+    console.log(err)
+    reply('Terjadi kesalahan.')
+  }
+}
+break
+
+	case 'redeem': {
+  const fs = require('fs')
+  const crypto = require('crypto')
+  const dbPath = './database/redeem.json'
+
+  if (!text) return replyhydro(`🎁 Contoh:\n${prefix}redeem ABC123`)
+
+  const redeemDB = JSON.parse(fs.readFileSync(dbPath))
+  const kode = text.trim().toUpperCase()
+
+  if (!redeemDB[kode]) 
+    return replyhydro('❌ Kode redeem tidak ditemukan!')
+
+  const data = redeemDB[kode]
+
+  if (!global.db.users[m.sender]) {
+    global.db.users[m.sender] = { limit: 0, money: 0 }
+  }
+
+  const user = global.db.users[m.sender]
+
+  if (Date.now() > data.expire)
+    return replyhydro('⏳ Kode sudah expired!')
+
+  if (data.ownerOnly && !Ahmad)
+    return replyhydro('🔒 Kode ini khusus owner!')
+
+  if (data.usedBy.length >= data.maxUse)
+    return replyhydro('❌ Kode sudah mencapai batas penggunaan!')
+
+  const deviceID = crypto.createHash('md5')
+    .update(m.sender)
+    .digest('hex')
+
+  if (data.usedBy.includes(deviceID))
+    return replyhydro('⚠️ Kamu sudah pernah menggunakan kode ini!')
+
+  user.limit += data.limit
+  user.money += data.money
+
+  data.usedBy.push(deviceID)
+
+  fs.writeFileSync(dbPath, JSON.stringify(redeemDB, null, 2))
+
+  replyhydro(`✅ *REDEEM BERHASIL!*
+
+🎁 Limit +${data.limit}
+💰 Money +${data.money}
+
+📊 Sisa kuota: ${data.maxUse - data.usedBy.length}`)
+}
+break
+case 'addredeem': {
+  if (!Ahmad) return replytolak(mess.only.owner);
+
+  if (!text) return replyhydro(
+`Format:
+${prefix}addredeem limit|money|maxUse|hari|ownerOnly
+
+Contoh:
+${prefix}addredeem 10|5000|5|7|false`
+  )
+
+  const fs = require('fs')
+  const dbPath = './database/redeem.json'
+  const redeemDB = JSON.parse(fs.readFileSync(dbPath))
+
+  const [limit, money, maxUse, hari, ownerOnly] = text.split('|')
+
+  if (!limit || !money || !maxUse || !hari || !ownerOnly)
+    return replyhydro('❌ Format salah!')
+
+  const kode = crypto.randomBytes(4).toString('hex').toUpperCase()
+
+  const expire = Date.now() + (Number(hari) * 86400000)
+
+  redeemDB[kode] = {
+    limit: Number(limit),
+    money: Number(money),
+    maxUse: Number(maxUse),
+    expire: expire,
+    ownerOnly: ownerOnly === 'true',
+    usedBy: []
+  }
+
+  fs.writeFileSync(dbPath, JSON.stringify(redeemDB, null, 2))
+
+  replyhydro(`✅ *Kode Redeem Berhasil Dibuat*
+
+🎟 Kode: *${kode}*
+🎁 Limit: ${limit}
+💰 Money: ${money}
+👥 Max Use: ${maxUse}
+⏳ Expire: ${hari} hari
+🔒 Owner Only: ${ownerOnly}`)
+}
+break
+case 'listredeem': {
+  if (!Ahmad) return replytolak(mess.only.owner);
+
+  const fs = require('fs')
+  const dbPath = './database/redeem.json'
+  const redeemDB = JSON.parse(fs.readFileSync(dbPath))
+
+  if (Object.keys(redeemDB).length === 0)
+    return replyhydro('Belum ada kode redeem.')
+
+  let teks = '📜 *DAFTAR KODE REDEEM*\n\n'
+
+  for (let kode in redeemDB) {
+    const data = redeemDB[kode]
+    const sisa = data.maxUse - data.usedBy.length
+    const status = Date.now() > data.expire ? '❌ Expired' : '✅ Active'
+
+    teks += `🎟 ${kode}
+Limit: ${data.limit}
+Money: ${data.money}
+Sisa: ${sisa}
+Status: ${status}
+Owner Only: ${data.ownerOnly}
+
+`
+  }
+
+  replyhydro(teks)
+}
+break
+
+	case 'alyabrat': {
+  const { createCanvas, loadImage } = require('canvas')
+  const axios = require('axios')
+  const { createSticker, StickerTypes } = require('wa-sticker-formatter')
+
+  if (!text) return reply('Teksnya mana bang')
+
+  try {
+    const imageUrl = 'https://files.catbox.moe/vswnil.jpg'
+
+    const res = await axios.get(imageUrl, { responseType: 'arraybuffer' })
+    const img = await loadImage(res.data)
+
+    const canvas = createCanvas(img.width, img.height)
+    const ctx = canvas.getContext('2d')
+
+    ctx.drawImage(img, 0, 0)
+
+    const paperX = img.width * 0.17
+    const paperY = img.height * 0.52
+    const paperW = img.width * 0.66
+    const paperH = img.height * 0.32
+
+    const padding = paperW * 0.08
+    const textAreaW = paperW - padding * 2
+
+    ctx.fillStyle = '#000'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+
+    function wrapLines(ctx, text, maxWidth) {
+      const words = text.split(' ')
+      let lines = []
+      let line = ''
+
+      for (let w of words) {
+        const test = line + w + ' '
+        if (ctx.measureText(test).width > maxWidth && line !== '') {
+          lines.push(line.trim())
+          line = w + ' '
+        } else {
+          line = test
+        }
+      }
+      lines.push(line.trim())
+      return lines
+    }
+
+    let fontSize = 72
+    let lines = []
+
+    while (fontSize > 32) {
+      ctx.font = `bold ${fontSize}px Arial`
+      lines = wrapLines(ctx, text, textAreaW)
+
+      const lineHeight = fontSize * 1.05
+      if (lines.length <= 3 && lines.length * lineHeight <= paperH) break
+      fontSize--
+    }
+
+    ctx.font = `bold ${fontSize}px Arial`
+    const lineHeight = fontSize * 1.05
+
+    const startY =
+      paperY +
+      paperH / 2 -
+      (lines.length * lineHeight) / 2 +
+      lineHeight * 0.38
+
+    const rotateDeg = 3.5
+    const rotateRad = rotateDeg * Math.PI / 180
+
+    const centerX = paperX + paperW / 2
+    const centerY = paperY + paperH / 2
+
+    const raiseOffset = -25 
+
+    ctx.save()
+    ctx.translate(centerX, centerY)
+    ctx.rotate(rotateRad)
+
+    lines.slice(0, 3).forEach((line, i) => {
+      ctx.fillText(
+        line,
+        0,
+        startY - centerY + raiseOffset + i * lineHeight
+      )
+    })
+
+    ctx.restore()
+
+    const stickerBuffer = await createSticker(
+      canvas.toBuffer('image/png'),
+      {
+        type: StickerTypes.FULL,
+        pack: 'Alyachan',
+        author: 'Ryuusuke',
+        quality: 90
+      }
+    )
+
+    await hydro.sendMessage(
+      m.chat,
+      { sticker: stickerBuffer },
+      { quoted: m }
+    )
+
+  } catch (err) {
+    console.error(err)
+    reply('❌ Gagal bikin stiker alyabrat')
+  }
+}
+break
+
+
+	case 'bratbahlil': {
+    if (!text) {
+        return reply(`✨ Contoh:\n${prefix + command} halo member`)
+    }
+
+    try {
+        const { createCanvas, loadImage } = require('canvas')
+        const fetch = require('node-fetch')
+        const { createSticker, StickerTypes } = require('wa-sticker-formatter')
+
+        const imageUrl = 'https://i.ibb.co/JwT2QFvY/elaina-md.jpg'
+
+        const res = await fetch(imageUrl)
+        const buffer = Buffer.from(await res.arrayBuffer())
+        const img = await loadImage(buffer)
+
+        const canvas = createCanvas(img.width, img.height)
+        const ctx = canvas.getContext('2d')
+
+        ctx.drawImage(img, 0, 0, img.width, img.height)
+
+        const boardX = img.width * 0.18
+        const boardY = img.height * 0.55
+        const boardW = img.width * 0.64
+        const boardH = img.height * 0.30
+
+        const padding = boardW * 0.08
+        const textAreaW = boardW - padding * 2
+
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillStyle = '#000000'
+
+        function wrapLines(ctx, text, maxWidth) {
+            const words = text.split(' ')
+            let lines = []
+            let line = ''
+
+            for (let w of words) {
+                const test = line + w + ' '
+                if (ctx.measureText(test).width > maxWidth && line !== '') {
+                    lines.push(line.trim())
+                    line = w + ' '
+                } else {
+                    line = test
+                }
+            }
+            lines.push(line.trim())
+            return lines
+        }
+
+        let fontSize = 80
+        let lines = []
+
+        while (fontSize > 32) {
+            ctx.font = `500 ${fontSize}px Roboto, Helvetica Neue, Helvetica, Arial, sans-serif`
+            lines = wrapLines(ctx, text, textAreaW)
+
+            const lineHeight = fontSize * 1.05
+            if (lines.length <= 3 && lines.length * lineHeight <= boardH) break
+            fontSize--
+        }
+
+        ctx.font = `500 ${fontSize}px Roboto, Helvetica Neue, Helvetica, Arial, sans-serif`
+        ctx.shadowColor = 'rgba(0,0,0,0.12)'
+        ctx.shadowBlur = 2
+        ctx.shadowOffsetX = 1
+        ctx.shadowOffsetY = 1
+
+        const lineHeight = fontSize * 1.05
+        const startY =
+            boardY +
+            boardH / 2 -
+            (lines.length * lineHeight) / 2 +
+            lineHeight * 0.38
+
+        lines.slice(0, 3).forEach((line, i) => {
+            ctx.fillText(
+                line,
+                boardX + boardW / 2,
+                startY + i * lineHeight
+            )
+        })
+
+        const stickerBuffer = await createSticker(canvas.toBuffer('image/png'), {
+            type: StickerTypes.FULL,
+            pack: 'ALYA CHAN',
+            author: 'Ryuusuke',
+            quality: 80
+        })
+
+        await hydro.sendMessage(
+            m.chat,
+            { sticker: stickerBuffer },
+            { quoted: m }
+        )
+
+    } catch (e) {
+        console.error(e)
+        reply('❌ Gagal membuat stiker brat bahlil')
+    }
+}
+break
+
+	case 'nyawit': {
+    let user = db.users[m.sender]
+    if (!user) return reply('User tidak terdaftar')
+
+    const delay = (ms) => new Promise(res => setTimeout(res, ms))
+    const stepDelay = 5000 // 5 detik
+
+    const steps = [
+        'nyawit? gass 🌴🔥',
+        'otw nyari lahan kosong dulu 🚶‍♂️',
+        'nemu lahan coy gatau punya siapa, gas eksekusi 😎',
+        'babat habis hutan ygy 🪓',
+        'bersihin lahan sampe rata',
+        'gali lubang 🕳️',
+        'tanam bibit sawit 🌱',
+        'rawat bertahun-tahun 🗿'
+    ]
+
+    let sent = await hydro.sendMessage(m.chat, {
+        text: steps[0]
+    }, { quoted: m })
+
+    for (let i = 1; i < steps.length; i++) {
+        await delay(stepDelay)
+        await hydro.sendMessage(m.chat, {
+            text: steps[i],
+            edit: sent.key
+        })
+    }
+
+    await delay(stepDelay)
+
+    const success = Math.random() < 0.7
+    const cuan = Math.floor(Math.random() * 50000) + 20000
+    const rugi = Math.floor(Math.random() * 30000) + 10000
+
+    if (success) {
+        user.money += cuan
+        await hydro.sendMessage(m.chat, {
+            text: `🌴💸 PANEN BERHASIL!\n+${cuan} rupiah\nSaldo sekarang: ${user.money}`,
+            edit: sent.key
+        })
+    } else {
+        user.money -= rugi
+        if (user.money < 0) user.money = 0
+        await hydro.sendMessage(m.chat, {
+            text: `💀🌧️ GAGAL PANEN!\n-${rugi} rupiah\nSaldo sekarang: ${user.money}`,
+            edit: sent.key
+        })
+    }
+}
+break
+
+	case 'livefunfact':
+case 'lifefact':
+case 'funfacthidup': {
+    if (!text)
+        return replyhydro(
+            '📅 Contoh penggunaan:\n.livefunfact 2002-01-11\n\nFormat: YYYY-MM-DD'
+        )
+
+    await hydro.sendMessage(m.chat, {
+        react: { text: '🧬', key: m.key }
+    })
+
+    try {
+        const axios = require('axios')
+        const { data } = await axios.get(
+            `https://api.nexray.web.id/fun/livefunfact?birthdate=${text}`
+        )
+
+        if (!data.status) return replyhydro('❌ Data tidak ditemukan.')
+
+        const r = data.result
+
+        let caption = `🧠 *FAKTA KEHIDUPAN BERDASARKAN TANGGAL LAHIR*\n\n`
+
+
+        caption += `📅 *Informasi Dasar*\n`
+        caption += `• Umur: ${r.basic_info.age_in_years} tahun\n`
+        caption += `• Hari hidup: ${r.basic_info.age_in_days.toLocaleString()} hari\n`
+        caption += `• Jam hidup: ${r.basic_info.age_in_hours.toLocaleString()} jam\n`
+        caption += `• Menit hidup: ${r.basic_info.age_in_minutes.toLocaleString()} menit\n`
+        caption += `• Detik hidup: ${r.basic_info.age_in_seconds.toLocaleString()} detik\n\n`
+
+        caption += `❤️ *Sistem Kardiovaskular*\n`
+        caption += `• Total detak jantung: ${r.cardiovascular.heart_beats_total.toLocaleString()}\n`
+        caption += `• Darah dipompa: ${r.cardiovascular.blood_pumped_l.toLocaleString()} liter\n`
+        caption += `• Jarak aliran darah: ${r.cardiovascular.blood_distance_km.toLocaleString()} km\n\n`
+
+
+        caption += `🫁 *Sistem Pernapasan*\n`
+        caption += `• Total napas: ${r.respiratory.total_breaths.toLocaleString()}\n`
+        caption += `• Oksigen dikonsumsi: ${r.respiratory.oxygen_consumed_l.toLocaleString()} liter\n`
+        caption += `• CO₂ dihasilkan: ${r.respiratory.co2_produced_l.toLocaleString()} liter\n\n`
+
+        caption += `🧠 *Sistem Saraf & Otak*\n`
+        caption += `• Aktivitas saraf: ${r.neurological.action_potentials.toLocaleString()}\n`
+        caption += `• Transmisi sinaps: ${r.neurological.synaptic_transmissions.toLocaleString()}\n`
+        caption += `• Energi otak: ${r.neurological.brain_energy_consumed_kj.toLocaleString()} kJ\n\n`
+
+        caption += `🔥 *Ringkasan Metabolisme*\n`
+        caption += `• Kalori terbakar: ${r.metabolic_summary.total_calories_burned.toLocaleString()} kcal\n`
+        caption += `• Energi dihasilkan: ${r.metabolic_summary.energy_produced_kj.toLocaleString()} kJ\n`
+        caption += `• Air diproses: ${r.metabolic_summary.water_processed_l.toLocaleString()} liter\n\n`
+
+        caption += `✨ *Fakta Menakjubkan*\n`
+        caption += `• Total sel tubuh: ${r.amazing_facts.total_body_cells.toLocaleString()}\n`
+        caption += `• Panjang DNA: ${r.amazing_facts.total_dna_length_km.toLocaleString()} km\n`
+        caption += `• Panjang pembuluh darah: ${r.amazing_facts.blood_vessel_length_km.toLocaleString()} km\n`
+        caption += `• Kekuatan tulang: ${r.amazing_facts.bone_strength_psi} PSI\n\n`
+
+        caption += `🌍 *Perbandingan Kehidupan*\n`
+        caption += `• Rata-rata harapan hidup dunia: ${r.life_comparison.world_life_expectancy} tahun\n`
+        caption += `• Persentase hidup dijalani: ${r.life_comparison.percentage_of_life_lived}%\n`
+        caption += `• Estimasi sisa umur: ${r.life_comparison.estimated_remaining_years} tahun\n`
+        caption += `• Kondisi biologis: ${r.life_comparison.biological_systems_optimal}\n\n`
+
+        caption += `⚠️ *Catatan Medis*\n${r.medical_disclaimer}`
+
+        replyhydro(caption)
+
+    } catch (err) {
+        console.error(err)
+        replyhydro('❌ Terjadi kesalahan saat mengambil data.')
+    }
+}
+break
 	case 'aiimg':
 case 'createimg': {
   if (!text) return replyhydro(
@@ -4438,7 +5418,7 @@ case 'createimg': {
 break
 	case 'cookpad': {
     const axios = require('axios')
-    const { generateWAMessageFromContent } = require('@whiskeysockets/baileys')
+    const { generateWAMessageFromContent } = require('socketon')
 
     if (!text) {
         return replyhydro(
@@ -4660,88 +5640,161 @@ ${res.translated}
 }
 break
 	case 'threads':
-	case 'tdl':
+case 'tdl':
 case 'threadsdl':
 case 'threaddl': {
-    if (!text)
-        return replyhydro(
-            `❌ *Masukkan link Threads!*\n\n` +
-            `Contoh:\n.${command} https://www.threads.net/@user/post/xxxx`
+  if (!text)
+    return replyhydro(`📌 Contoh: ${prefix + command} https://www.threads.net/@user/post/...`)
+
+  await hydro.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
+
+  try {
+    const axios = require('axios')
+    const { threadsdl } = require('./scrape/threads')
+    const data = await threadsdl(text)
+
+    if (!data.media.length) throw 'Media tidak ditemukan'
+
+    const username = data.author.username || '-'
+    const captionPost = data.author.caption || '-'
+
+    const videos = data.media.filter(m => m.type === 'video')
+    const images = data.media.filter(m => m.type === 'image')
+    const audios = data.media.filter(m => m.mp3)
+
+    if (videos.length) {
+      for (let i = 0; i < videos.length; i++) {
+        const videoUrl = videos[i].download
+
+        const res = await axios.get(videoUrl, {
+          responseType: 'arraybuffer',
+          headers: {
+            'User-Agent': 'Mozilla/5.0'
+          }
+        })
+
+        await hydro.sendMessage(
+          m.chat,
+          {
+            video: Buffer.from(res.data),
+            mimetype: 'video/mp4',
+            fileName: `threads_${i + 1}.mp4`,
+            caption:
+`🎥 *Threads Video*
+👤 Username : @${username}
+
+📝 Deskripsi :
+${captionPost}
+
+📦 Video ${i + 1} dari ${videos.length}
+⚙️ Powered by : ${botname}`,
+            buttons: audios.length && i === 0
+              ? [
+                  {
+                    buttonId: `${prefix}threadaudio ${text}`,
+                    buttonText: { displayText: '🎵 Ambil Audio' },
+                    type: 1
+                  }
+                ]
+              : [],
+            headerType: 4
+          },
+          { quoted: m }
         )
+      }
 
-    if (!/threads\.net|threads\.com/.test(text))
-        return replyhydro('❌ Link bukan dari Threads!')
-
-    await hydro.sendMessage(m.chat, {
-        react: { text: '⏳', key: m.key }
-    })
-
-    try {
-        const api = `https://api.nekolabs.web.id/downloader/threads?url=${encodeURIComponent(text)}`
-        const { data } = await axios.get(api)
-
-        if (!data.success)
-            return replyhydro('❌ Gagal mengambil data Threads!')
-
-        const res = data.result
-        const hasVideo =
-            Array.isArray(res.videos) &&
-            res.videos.flat().some(v => v.url)
-
-        const hasImage =
-            Array.isArray(res.images) &&
-            res.images.flat().some(i => i.url)
-
-        const caption =
-            `✅ *Threads Downloader*\n` +
-            `👤 ${res.user?.username || '-'}\n\n` +
-            `${res.text || ''}`
-
-        if (hasVideo) {
-            const video = res.videos.flat().find(v => v.url)
-
-            await hydro.sendMessage(
-                m.chat,
-                {
-                    video: { url: video.url },
-                    caption
-                },
-                { quoted: m }
-            )
-
-            await hydro.sendMessage(m.chat, {
-                react: { text: '✅', key: m.key }
-            })
-            break
-        }
-        if (hasImage) {
-            let imgs = res.images.flat().filter(i => i.url)
-
-            let no = 1
-            for (let img of imgs) {
-                await hydro.sendMessage(
-                    m.chat,
-                    {
-                        image: { url: img.url },
-                        caption:
-                            caption + `\n\n📦 Image ${no}/${imgs.length}`
-                    },
-                    { quoted: m }
-                )
-                no++
-            }
-
-            await hydro.sendMessage(m.chat, {
-                react: { text: '✅', key: m.key }
-            })
-            break
-        }
-
-        replyhydro('❌ Media tidak ditemukan!')
-    } catch (err) {
-        console.error(err)
-        replyhydro('❌ Terjadi kesalahan saat mengambil Threads!')
+      await hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+      return
     }
+
+    if (images.length) {
+      const cards = await Promise.all(
+        images.map(async (item, i) => ({
+          header: proto.Message.InteractiveMessage.Header.create({
+            ...(await prepareWAMessageMedia(
+              { image: { url: item.download } },
+              { upload: hydro.waUploadToServer }
+            )),
+            title: '',
+            subtitle: `Foto ${i + 1} dari ${images.length}`,
+            hasMediaAttachment: false
+          }),
+          body: { text: '' },
+          nativeFlowMessage: { buttons: [] }
+        }))
+      )
+
+      const msg = generateWAMessageFromContent(
+        m.chat,
+        {
+          viewOnceMessage: {
+            message: {
+              interactiveMessage: {
+                body: {
+                  text:
+`🧵 *Threads Post*
+👤 Username : @${username}
+
+📝 Deskripsi :
+${captionPost}
+
+📦 Total Media : ${images.length}
+⚙️ Powered by : ${botname}`
+                },
+                carouselMessage: {
+                  cards,
+                  messageVersion: 1
+                }
+              }
+            }
+          }
+        },
+        { quoted: m }
+      )
+
+      await hydro.relayMessage(m.chat, msg.message, { messageId: msg.key.id })
+      await hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+      return
+    }
+
+    throw 'Tipe media tidak dikenali'
+
+  } catch (err) {
+    console.error(err)
+    await hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    replyhydro('❌ Gagal mengambil media Threads.')
+  }
+}
+break
+case 'threadaudio': {
+  if (!text) return replyhydro('❌ URL Threads tidak valid')
+
+  hydro.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
+
+  try {
+    const { threadsdl } = require('./scrape/threads')
+    const data = await threadsdl(text)
+
+    const audio = data.media.find(m => m.mp3)
+
+    if (!audio) throw 'Audio tidak ditemukan'
+
+    await hydro.sendMessage(
+      m.chat,
+      {
+        audio: { url: audio.mp3 },
+        mimetype: 'audio/mpeg'
+      },
+      { quoted: m }
+    )
+
+    await hydro.sendMessage(m.chat, { react: { text: '🎵', key: m.key } })
+
+  } catch (err) {
+    console.error(err)
+    await hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    replyhydro('❌ Gagal mengambil audio Threads.')
+  }
 }
 break
 case 'giveaway': {
@@ -5764,7 +6817,7 @@ break
     const { exec } = require('child_process')
     const fs = require('fs')
     const path = require('path')
-    const { generateWAMessageFromContent } = require('@whiskeysockets/baileys')
+    const { generateWAMessageFromContent } = require('socketon')
 
     if (!text) {
         return replyhydro(
@@ -5930,38 +6983,104 @@ ${prefix}dramabox episode <url> <nomor>`
 break
 
 	case 'ai':
-	case 'alya': {
-  if (!text) {
-    return replyhydro(`Contoh:\n${prefix + command} bagaimana cara membuat minuman dingin`);
-  }
+	case 'alya': 
+    case 'hydro':
+	case 'dro': {
+    if (m.key.fromMe) return
+    const Gemini = require('@google/generative-ai')
+    const fs = require('fs')
 
-  await hydro.sendMessage(m.chat, {
-    react: { text: '⏳', key: m.key }
-  });
+    const supabase = createClient(global.supaurl, global.supakey)
 
-  try {
-    const axios = require('axios');
-
-    const logic = 'nama mu adalah Alya, kamu adalah asisten kecerdasan buatan yang sering membantu orang lain jika ada yang ditanyakan, dan kamu adalah bot WhatsApp yang di buat oleh Ryuusuke';
-
-    const url = `https://api.nexray.web.id/ai/writecream?text=${encodeURIComponent(text)}&logic=${encodeURIComponent(logic)}`;
-
-    const { data } = await axios.get(url);
-
-    if (!data || !data.result) {
-      return replyhydro('❌ Alya tidak dapat menjawab saat ini.');
+    const gue = m.sender
+    const quoted = m.quoted
+    const validMedia = quoted && (quoted.mimetype || quoted.imageMessage || quoted.videoMessage || quoted.audioMessage || quoted.documentMessage || quoted.stickerMessage)
+    
+    let inputText = text
+    if (quoted && !validMedia) {
+        if (quoted.text || quoted.caption) {
+            const contextText = quoted.text || quoted.caption
+            if (text) {
+                inputText = `Context Pesan:\n"${contextText}"\n\nPertanyaan Saya:\n${text}`
+            } else {
+                inputText = contextText
+            }
+        }
     }
+    const captionMedia = inputText || 'Tolong analisa file/media ini'
 
-    replyhydro(`🤍 *Alya*\n\n${data.result}`);
+    const promptAwal = `Nama kamu adalah Alya Mikhailovna Kujou dan dibuat oleh ${global.ownername} dan tugas kamu adalah melayani permintaan ${pushname}.\n\n`
 
-  } catch (err) {
-    console.error(err);
-    replyhydro('⚠️ Terjadi kesalahan saat memanggil Alya.');
-  }
+    let contentRequest = []
+
+    try {
+        const { data: keysData, error: dbError } = await supabase
+            .from('gemini_keys')
+            .select('apikey')
+            .eq('is_active', true)
+
+        if (dbError || !keysData || keysData.length === 0) {
+            return m.reply(`❌ Gagal mengambil API Key`)
+        }
+
+        if (validMedia) {
+            replyhydro(`🔎 okay tunggu @${gue.split('@')[0]}, ku proses...`, { mentions: [gue] })
+            
+            const mimeType = quoted.mimetype || 'application/octet-stream'
+            const mediaPath = await hydro.downloadAndSaveMediaMessage(quoted)
+            const buffer = fs.readFileSync(mediaPath)
+            
+            contentRequest = [
+                { inlineData: { data: buffer.toString('base64'), mimeType: mimeType } },
+                promptAwal + captionMedia
+            ]
+            
+            fs.unlinkSync(mediaPath)
+        } else if (inputText) {
+            contentRequest = [promptAwal + inputText]
+        } else {
+            return m.reply('_Ada yang bisa saya bantu bub?_')
+        }
+
+        let success = false
+        let lastError = 'Unknown Error'
+
+        for (const k of keysData) {
+            const apiKey = k.apikey
+            
+            try {
+                const genAI = new Gemini.GoogleGenerativeAI(apiKey)
+                const model = genAI.getGenerativeModel({ model: 'gemini-flash-lite-latest' })
+                
+                const result = await model.generateContent(contentRequest)
+                const response = result.response.text()
+                
+                await m.reply(response)
+                success = true
+                break 
+            } catch (err) {
+                lastError = err.message
+                
+                if (err.message.includes('403') || err.message.toLowerCase().includes('leaked') || err.message.toLowerCase().includes('invalid')) {
+                    await supabase
+                        .from('gemini_keys')
+                        .update({ is_active: false })
+                        .eq('apikey', apiKey)
+                }
+                continue 
+            }
+        }
+
+        if (!success) {
+            return m.reply(`❌ Eror.\nDetails: ${lastError}`)
+        }
+
+    } catch (err) {
+        console.error(err)
+        return m.reply(`❌ Eror:\n${err.message}`)
+    }
 }
-break;
-
-
+break
 	case 'cekrek':
 case 'cekrekening': {
   if (!text) {
@@ -6891,33 +8010,6 @@ case 'buildml': {
     }
 }
 break
-
-	case 'anyabratvid':
-	case 'anyabratvideo': {
-    if (!text && (!m.quoted || !m.quoted.text))
-        return m.reply(`Kirim / reply teks dengan *${prefix + command}*`)
-
-    const teks = m.quoted ? m.quoted.text : text
-	
-    try {
-		await hydro.sendMessage(m.chat, { react: { text: '⏳', key: m.key } });
-        const stickerBuffer = await getBuffer(
-            'https://api-faa.my.id/faa/anyabrat-vid?text=' +
-            encodeURIComponent(teks)
-        )
-
-        await hydro.sendMessage(
-            m.chat,
-            { sticker: stickerBuffer },
-            { quoted: m }
-        )
-
-    } catch (e) {
-        console.error(e)
-        m.reply('❌ Gagal memproses anyabratvid')
-    }
-}
-	break
 		case 'spekhp':
 	case 'spesifikasihp':
 	case 'shp': {
@@ -7646,6 +8738,77 @@ case 'cekemail': {
   replyhydro(msg.trim())
 }
 break
+case 'reactch2':
+case 'reactchannel2': {
+    if (!text) return replyhydro(
+        `Example:\n${prefix + command} https://whatsapp.com/channel/0029Vb2IjRwFi8xZpEVes12h/571 🦄`
+    )
+
+    const axios = require('axios')
+
+    let args = text.split(' ')
+    let link = args[0]
+    let emoji = args[1] || '❤️'
+
+    if (!link.includes('whatsapp.com/channel'))
+        return replyhydro('❌ Link channel tidak valid!')
+
+    await hydro.sendMessage(m.chat, {
+        react: { text: '⏳', key: m.key }
+    })
+
+    try {
+
+        const apiKey = '71836158705886b28ed902c5cc095dc3c43f887fb3825599c1b690a2ec10bb6b'
+
+        const { data } = await axios.post(
+            `https://back.asitha.top/api/channel/react-to-post?apiKey=${apiKey}`,
+            {
+                post_link: link,
+                reacts: emoji
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 10)',
+                    'Origin': 'https://asitha.top',
+                    'Referer': 'https://asitha.top/'
+                }
+            }
+        )
+
+        if (data?.message) {
+
+            await replyhydro(
+                `✅ *REACTION BERHASIL*\n\n` +
+                `📢 ${data.message}\n` +
+                `🤖 ${data.botResponse || ''}\n` +
+                `🎯 Emoji: ${emoji}`
+            )
+
+            await hydro.sendMessage(m.chat, {
+                react: { text: '✅', key: m.key }
+            })
+
+        } else {
+            throw new Error('Response tidak valid.')
+        }
+
+    } catch (err) {
+
+        console.log(err?.response?.data || err)
+
+        replyhydro(
+            `❌ *ERROR*\n\n` +
+            `${err?.response?.data?.message || err.message}`
+        )
+
+        await hydro.sendMessage(m.chat, {
+            react: { text: '❌', key: m.key }
+        })
+    }
+}
+break 
 	case 'frch':
 	case 'fakereactch':
 	case 'rch':
@@ -7818,7 +8981,7 @@ break
         contextInfo: {
             externalAdReply: {
                 showAdAttribution: true,
-                title: "Ａｌｙａ V6 ✦ デジタルスペース",
+                title: "Ａｌｙａ ✦ デジタルスペース",
                 body: "Klik untuk masuk dan dapatkan SC!",
                 mediaType: 2,
                 thumbnail: Buffer.from(buffer.data),
@@ -7895,6 +9058,162 @@ break;
 	}
 	break;
 		case 'tochibi': case 'chibi': case 'jadichibi': case 'chibifigure':
+		case 'tochibby':
+case 'chibby':
+case 'mini': {
+
+  const axios = require('axios')
+  const FormData = require('form-data')
+  const fs = require('fs')
+  const CreateImg = require('./lib/createimg')
+
+  const COST_EDIT = 2
+  const userId = m.sender
+  const prompt = "buat karakter ini dengan versi mini atau chibby nya tanpa merubah penampilannya"
+
+  if (!global.toChibbyProcess) global.toChibbyProcess = {}
+
+  if (global.toChibbyProcess[userId]) {
+    return replyhydro(`⏳ *Sedang Memproses Gambar...*
+
+👤 *User* : ${pushname}
+🚫 Tidak bisa menjalankan proses bersamaan.
+📦 Tunggu proses sebelumnya selesai.`)
+  }
+
+  global.toChibbyProcess[userId] = true
+
+  try {
+
+    if (!global.db.users[userId]) {
+      global.db.users[userId] = { limit: 0 }
+    }
+
+    let userData = global.db.users[userId]
+
+    if (userData.limit < COST_EDIT) {
+      return replyhydro(`❌ *Limit tidak mencukupi!*
+
+🎫 *Limit kamu* : ${userData.limit}
+🖼️ *Biaya * : ${COST_EDIT}
+
+💡 Silakan beli limit terlebih dahulu.`)
+    }
+
+    if (!m.quoted) {
+      return replyhydro(`🖼️ *Balas gambar yang ingin dijadikan chibby*
+
+📌 Cara pakai:
+Reply gambar lalu ketik:
+*${prefix + command}*`)
+    }
+
+    let mime = m.quoted.mimetype || ""
+    if (!/image\/(jpe?g|png)/.test(mime)) {
+      return replyhydro(`❌ *Format tidak didukung!*
+
+📄 Format yang didukung:
+• JPG
+• PNG`)
+    }
+
+    replyhydro(`⏳ *Mengubah ke versi Chibby...*
+
+👤 *User* : ${pushname}
+🎫 *Biaya* : ${COST_EDIT} Limit
+📤 *Status* : Rendering...`)
+
+    const imgBuffer = await m.quoted.download()
+
+    try {
+
+      const form = new FormData()
+      form.append("file", imgBuffer, {
+        filename: "image.jpg",
+        contentType: mime
+      })
+
+      const upload = await axios.post(
+        "https://tmpfiles.org/api/v1/upload",
+        form,
+        { headers: form.getHeaders() }
+      )
+
+      const imageUrl = upload.data.data.url.replace(
+        "tmpfiles.org/",
+        "tmpfiles.org/dl/"
+      )
+
+      const apiUrl =
+        `https://api-faa.my.id/faa/editfoto?url=${encodeURIComponent(imageUrl)}&prompt=${encodeURIComponent(prompt)}`
+
+      const hasil = await axios.get(apiUrl, { responseType: "arraybuffer" })
+
+      await hydro.sendMessage(m.chat, {
+        image: hasil.data,
+        caption: `✨ *CHIBBY VERSION SUCCESS!* ✨
+
+👤 *Request By* : ${pushname}
+🎫 *Limit Terpakai* : ${COST_EDIT}
+🎟️ *Sisa Limit* : ${userData.limit - COST_EDIT}
+
+━━━━━━━━━━━━━━━━━━━━━
+🚀 *Powered By ${botname}*
+━━━━━━━━━━━━━━━━━━━━━`
+      }, { quoted: m })
+
+    } catch (engineErr) {
+
+      console.log('[FALLBACK CHIBBY]', engineErr?.message)
+
+      const tmpPath = `./tmp/chibby-${Date.now()}.jpg`
+      fs.writeFileSync(tmpPath, imgBuffer)
+
+      const ai = new CreateImg()
+      const url = await ai.edit(prompt, tmpPath)
+
+      fs.unlinkSync(tmpPath)
+
+      await hydro.sendMessage(m.chat, {
+        image: { url },
+        caption: `✨ *SUCCESS!*
+
+👤 *Request By* : ${pushname}
+🎫 *Limit Terpakai* : ${COST_EDIT}
+🎟️ *Sisa Limit* : ${userData.limit - COST_EDIT}
+
+━━━━━━━━━━━━━━━━━━━━━
+🚀 *Powered By ${botname}*
+━━━━━━━━━━━━━━━━━━━━━`
+      }, { quoted: m })
+    }
+
+    userData.limit -= COST_EDIT
+    global.db.users[userId] = userData
+
+  } catch (err) {
+
+    console.error(err)
+
+    replyhydro(`❌ *PROSES GAGAL*
+
+👤 *Request By* : ${pushname}
+⚠️ *Limit tidak dikurangi*
+
+Kemungkinan:
+• Server sibuk
+• API error
+• Terkena proteksi Cloudflare 
+
+━━━━━━━━━━━━━━━━━━━━━
+🚀 *Powered By ${botname}*
+━━━━━━━━━━━━━━━━━━━━━`)
+  } finally {
+    delete global.toChibbyProcess[userId]
+  }
+
+}
+break
 	case 'tomaid': case 'tomatdrip': case 'jadimaid': case 'babu':
 	case 'tobotak': case 'botak':
 	case 'tohitam': case 'jadihitam': case 'hitamkan':
@@ -8142,13 +9461,13 @@ break;
     replyhydro(`📋 *Daftar User Blacklist:*\n\n${text}`);
 }
 break;
-case "playch2": {
+case "playch": {
     if (!Ahmad) return reply(mess.only.owner)
     if (!text) return reply(`*Contoh :* ${prefix + command} To the bone`)
     await playCh2(hydro, text, reply)
 }
 break
-	case 'playch':
+	case 'playch2':
     case 'songch': {
 		 if (!Ahmad) return hydro.sendMessage(m.chat, { text: '❌ Khusus owner sayang 😎' }, { quoted: m })
         await playchHandler.run(hydro, m, text);
@@ -8310,168 +9629,6 @@ case 'furina': {
     }
 }
 break;
-	case 'hdvid':
-	case 'vidhd':
-	case 'hdvid2':
-	case 'hdvideo2': {
-
-  const axios = require('axios')
-  const FormData = require('form-data')
-  const fs = require('fs')
-  const path = require('path')
-  const crypto = require('crypto')
-
-  const COST_HDVID = 250000
-  const userId = m.sender
-
-  if (!global.db.users[userId]) {
-    global.db.users[userId] = { money: 0 }
-  }
-
-  const userData = global.db.users[userId]
-
-  let mime = m.quoted?.mimetype || ''
-  if (!m.quoted || !/video/.test(mime))
-    return replyhydro('❗ Reply video yang ingin dijadikan HD!')
-
-  if (userData.money < COST_HDVID)
-    return replyhydro(`❌ *Saldo tidak mencukupi!*
-
-💰 Saldo : Rp ${userData.money}
-💸 Biaya : Rp ${COST_HDVID}`)
-
-  replyhydro(`⏳ *Memproses Video ke HD (AI)*
-
-🎞 Resolusi : 4K
-💸 Biaya : Rp ${COST_HDVID}
-
-Mohon tunggu, proses bisa beberapa menit...`)
-
-  const UA = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36'
-  const API = 'https://api.unblurimage.ai/api/upscaler'
-
-  function productserial() {
-    return crypto.createHash('md5')
-      .update([UA, process.platform, process.arch, Date.now(), Math.random()].join('|'))
-      .digest('hex')
-  }
-
-  const product = productserial()
-
-  try {
-    const buffer = await m.quoted.download()
-    const tmpDir = './tmp'
-    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir)
-
-    const filePath = path.join(tmpDir, `${Date.now()}.mp4`)
-    fs.writeFileSync(filePath, buffer)
-
-    const form = new FormData()
-    form.append('video_file_name', path.basename(filePath))
-
-    const upload = await axios.post(
-      `${API}/v1/ai-video-enhancer/upload-video`,
-      form,
-      {
-        headers: {
-          ...form.getHeaders(),
-          'user-agent': UA,
-          origin: 'https://unblurimage.ai',
-          referer: 'https://unblurimage.ai/'
-        }
-      }
-    )
-
-    const uploadData = upload.data.result
-
-    /** PUT OSS */
-    await axios.put(uploadData.url, fs.createReadStream(filePath), {
-      headers: { 'content-type': 'video/mp4' },
-      maxBodyLength: Infinity,
-      maxContentLength: Infinity
-    })
-
-    const cdnUrl = 'https://cdn.unblurimage.ai/' + uploadData.object_name
-
-    /** CREATE JOB */
-    const jobForm = new FormData()
-    jobForm.append('original_video_file', cdnUrl)
-    jobForm.append('resolution', '4k')
-    jobForm.append('is_preview', 'false')
-
-    const job = await axios.post(
-      `${API}/v2/ai-video-enhancer/create-job`,
-      jobForm,
-      {
-        headers: {
-          ...jobForm.getHeaders(),
-          'user-agent': UA,
-          origin: 'https://unblurimage.ai',
-          referer: 'https://unblurimage.ai/',
-          'product-serial': product
-        }
-      }
-    )
-
-    if (job.data.code !== 100000)
-      throw new Error('Gagal membuat job')
-
-    const jobId = job.data.result.job_id
-
-    /** POLLING */
-    let result
-    while (true) {
-      const check = await axios.get(
-        `${API}/v2/ai-video-enhancer/get-job/${jobId}`,
-        {
-          headers: {
-            'user-agent': UA,
-            origin: 'https://unblurimage.ai',
-            referer: 'https://unblurimage.ai/',
-            'product-serial': product
-          }
-        }
-      )
-
-      if (check.data.code === 100000 && check.data.result?.output_url) {
-        result = check.data.result
-        break
-      }
-
-      if (check.data.code !== 300010)
-        throw new Error('Job gagal')
-
-      await new Promise(r => setTimeout(r, 5000))
-    }
-
-    await hydro.sendMessage(m.chat, {
-      video: { url: result.output_url },
-      caption: `✨ *VIDEO BERHASIL DI-HD-kan!*
-
-🎞 Quality : 4K 
-💸 Biaya : Rp ${COST_HDVID}
-💰 Sisa Saldo : Rp ${userData.money - COST_HDVID}
-
-━━━━━━━━━━━━━━━━━━━━━
-🚀 Powered By ${botname}`
-    }, { quoted: m })
-
-    userData.money -= COST_HDVID
-    fs.unlinkSync(filePath)
-
-  } catch (e) {
-    console.error(e)
-    replyhydro(`❌ *GAGAL MEMPROSES VIDEO*
-
-⚠️ Saldo *tidak dipotong*
-Kemungkinan:
-• Video terlalu besar
-• Server AI sibuk
-• Format tidak didukung`)
-  }
-}
-break
-
 	case 'animefinder': {
     const axios = require('axios');
     const FormData = require('form-data');
@@ -9057,56 +10214,92 @@ case 'validate': {
 }
 break;
 case 'inspect': {
-    if (!text) return hydro.sendMessage(m.chat, { text: 'Masukkan Link Grup!' }, { quoted: m });
+    if (!text) return m.reply('📎 Masukkan link grup atau channel!')
 
-    let _grup = /chat.whatsapp.com\/([\w\d]*)/;
-    let _saluran = /whatsapp\.com\/channel\/([\w\d]*)/;
+    const grupRegex = /chat\.whatsapp\.com\/([A-Za-z0-9]+)/i
+    const channelRegex = /whatsapp\.com\/channel\/([A-Za-z0-9]+)/i
 
     try {
-        if (_grup.test(text)) {
-            const inviteCode = text.match(_grup)[1];
-            const _g = await hydro.groupGetInviteInfo(inviteCode);
+        // ===== GROUP =====
+        if (grupRegex.test(text)) {
+            const inviteCode = text.match(grupRegex)[1]
+            const g = await hydro.groupGetInviteInfo(inviteCode)
 
-            let ppUrl = '';
+            let pp
             try {
-                ppUrl = await hydro.profilePictureUrl(_g.id, 'image'); // 'image' = versi thumbnail
+                pp = await hydro.profilePictureUrl(g.id, 'image')
             } catch {
-                ppUrl = null;
+                pp = null
             }
 
-            let teks = `*[ INFORMATION GROUP ]*\n\nName Group: ${_g.subject}\nGroup ID: ${_g.id}\nCreate At: ${new Date(_g.creation * 1000).toLocaleString()}${_g.owner ? ('\nCreate By: ' + _g.owner) : ''}\nLinked Parent: ${_g.linkedParent}\nRestrict: ${_g.restrict}\nAnnounce: ${_g.announce}\nIs Community: ${_g.isCommunity}\nCommunity Announce: ${_g.isCommunityAnnounce}\nJoin Approval: ${_g.joinApprovalMode}\nMember Add Mode: ${_g.memberAddMode}\nDescription ID: ${'`' + _g.descId + '`'}\nDescription: ${_g.desc}\nParticipants:\n`;
+            const admins = (g.participants || []).filter(v => v.admin)
 
-            _g.participants.forEach(a => {
-                if (a.admin) teks += `- Admin: @${a.id.split('@')[0]} [${a.admin}]\n`;
-            });
+            let teks = `*[ INFORMATION GROUP ]*
 
-      
-            if (ppUrl) {
-                hydro.sendMessage(m.chat, {
-                    image: { url: ppUrl },
+📛 Name: ${g.subject || '-'}
+🆔 ID: ${g.id || '-'}
+👥 Members: ${g.size || g.participants?.length || '-'}
+📅 Created: ${g.creation ? new Date(g.creation * 1000).toLocaleString() : '-'}
+👑 Creator: ${g.owner ? '@' + g.owner.split('@')[0] : '-'}
+🔒 Restrict: ${g.restrict ?? '-'}
+📢 Announce: ${g.announce ?? '-'}
+🏘️ Community: ${g.isCommunity ?? '-'}
+✅ Join Approval: ${g.joinApprovalMode ?? '-'}
+➕ Member Add Mode: ${g.memberAddMode ?? '-'}
+
+📝 Description:
+${g.desc || '-'}
+
+👮 Admins:
+${admins.length ? admins.map(a =>
+`- @${a.id.split('@')[0]} (${a.admin})`
+).join('\n') : '-'}`
+
+            if (pp) {
+                await hydro.sendMessage(m.chat, {
+                    image: { url: pp },
                     caption: teks,
-                    mentions: _g.participants.map(p => p.id)
-                }, { quoted: m });
+                    mentions: admins.map(a => a.id)
+                }, { quoted: m })
             } else {
-                hydro.sendMessage(m.chat, { text: teks, mentions: _g.participants.map(p => p.id) }, { quoted: m });
+                await hydro.sendMessage(m.chat, {
+                    text: teks,
+                    mentions: admins.map(a => a.id)
+                }, { quoted: m })
             }
 
-        } else if (_saluran.test(text) || text.endsWith('@newsletter') || !isNaN(text)) {
-            const channelId = text.match(_saluran)?.[1] || text;
-            const n = await hydro.newsletterMsg(channelId);
+        // ===== CHANNEL =====
+        } else if (channelRegex.test(text) || text.endsWith('@newsletter')) {
+            const channelId = text.match(channelRegex)?.[1] || text
+            const n = await hydro.newsletterMetadata(`@newsletter~${channelId}`)
 
-            const teks = `*[ INFORMATION CHANNEL ]*\n\nID: ${n.id}\nState: ${n.state.type}\nName: ${n.thread_metadata.name.text}\nCreate At: ${new Date(n.thread_metadata.creation_time * 1000).toLocaleString()}\nSubscriber: ${n.thread_metadata.subscribers_count}\nVerification: ${n.thread_metadata.verification}\nDescription: ${n.thread_metadata.description.text}\n`;
+            const meta = n.thread_metadata || {}
 
-            hydro.sendMessage(m.chat, { text: teks }, { quoted: m });
+            let teks = `*[ INFORMATION CHANNEL ]*
+
+📛 Name: ${meta.name?.text || '-'}
+🆔 ID: ${n.id || '-'}
+📅 Created: ${meta.creation_time
+    ? new Date(meta.creation_time * 1000).toLocaleString()
+    : '-'}
+👥 Subscribers: ${meta.subscribers_count || 0}
+✔️ Verified: ${meta.verification || 'No'}
+
+📝 Description:
+${meta.description?.text || '-'}`
+
+            await hydro.sendMessage(m.chat, { text: teks }, { quoted: m })
+
         } else {
-            hydro.sendMessage(m.chat, { text: 'Hanya Support Url Grup atau Saluran!' }, { quoted: m });
+            m.reply('❌ Hanya support link Grup atau Channel!')
         }
-    } catch (e) {
-        console.log(e);
-        hydro.sendMessage(m.chat, { text: '❌ Grup atau Saluran Tidak Ditemukan!' }, { quoted: m });
+    } catch (err) {
+        console.log(err)
+        m.reply('❌ Gagal mengambil informasi grup / channel')
     }
 }
-break;
+break
+
 	case 'rank': {
     try {
         const user = getUserLevel(m.sender)
@@ -9132,7 +10325,7 @@ break;
         ]
         const background = backgroundList[Math.floor(Math.random() * backgroundList.length)]
         const apiURL =
-            `https://apocalypse.web.id/canvas/profile?` +
+            `https://api.apocalypse.web.id/canvas/profile?` +
             `backgroundURL=${encodeURIComponent(background)}&` +
             `avatarURL=${encodedPP}&` +
             `rankName=${encodeURIComponent(badge)}&` +
@@ -9466,56 +10659,108 @@ case 'pak-ustad': {
 break
 case 'hd':
 case 'remini':
-case 'hdr': {
-    if (!quoted) return replyhydro(`📸 Kirim atau reply gambar dengan caption *${prefix + command}*`);
-    if (!/image/.test(mime) && !/webp/.test(mime)) return replyhydro(`📸 Format tidak didukung. Kirim gambar/stiker.`);
+case 'hdr':
+case 'hdvid':
+case 'vidhd':
+case 'hdvideo': {
+    if (!quoted) {
+        return replytolak(`📸 Reply gambar atau video dengan perintah *${prefix + command}*`)
+    }
 
-    hydro.sendMessage(m.chat, { react: { text: `⏱️`, key: m.key } });
+    if (/video/.test(mime)) {
+        await hydro.sendMessage(m.chat, { react: { text: '⌛', key: m.key } })
+        replyhydro("⏳ Sedang memproses video ke HD, tunggu sebentar...")
 
-    let res
-    let scale = 4
-    let attempt = 0
+        try {
+            const axios = require('axios')
+            const FormData = require('form-data')
 
-    try {
-        const { hdr } = require('./scrape/iloveimg.js')
-        const buffer = await quoted.download()
+            const videoBuffer = await quoted.download()
 
-        while (attempt < 2) {
-            try {
-                if (attempt === 1) {
-                    scale = 2
-                }
-                
-                res = await hdr(buffer, scale)
+            const form = new FormData()
+            form.append("file", videoBuffer, {
+                filename: "video.mp4",
+                contentType: "video/mp4"
+            })
 
-                let caption = `✅ *Sukses Meningkatkan Kualitas 4x*`
-                if (scale === 2 && attempt === 1) {
-                    caption += `✅ *Sukses Meningkatkan Kualitas 2x*`
-                }
+            let upload = await axios.post(
+                "https://tmpfiles.org/api/v1/upload",
+                form,
+                { headers: form.getHeaders() }
+            )
 
-                await hydro.sendMessage(m.chat, {
-                    image: res,
-                    caption: caption
-                }, { quoted: m })
-                
-                await hydro.sendMessage(m.chat, { react: { text: "✅", key: m.key } })
-                return
+            let fileUrl = upload.data.data.url.replace(
+                "tmpfiles.org/",
+                "tmpfiles.org/dl/"
+            )
 
-            } catch (e) {
-                if (attempt === 0) {
+            let apiUrl = `https://api-faa.my.id/faa/hdvid?url=${encodeURIComponent(fileUrl)}`
+            let hasil = await axios.get(apiUrl)
+
+            if (!hasil.data.status) throw new Error("API gagal")
+
+            const { download_url, quality } = hasil.data.result
+
+            await hydro.sendMessage(
+                m.chat,
+                {
+                    video: { url: download_url },
+                    caption: `✨ Video berhasil diubah ke kualitas *${quality}*!`
+                },
+                { quoted: m }
+            )
+
+            await hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+
+        } catch (err) {
+            console.error(err)
+            await hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+            replyhydro("❌ Gagal memproses video ke HD.")
+        }
+		
+    } else if (/image/.test(mime) || /webp/.test(mime)) {
+        await hydro.sendMessage(m.chat, { react: { text: '⏱️', key: m.key } })
+
+        let scale = 4
+        let attempt = 0
+
+        try {
+            const buffer = await quoted.download()
+
+            while (attempt < 2) {
+                try {
+                    if (attempt === 1) scale = 2
+                    const res = await hdr(buffer, scale)
+
+                    await hydro.sendMessage(
+                        m.chat,
+                        {
+                            image: res,
+                            caption: global.mess.success
+                        },
+                        { quoted: m }
+                    )
+
+                    await hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+                    return
+
+                } catch (e) {
                     attempt++
-                    continue
-                } else {
-                    throw e
+                    if (attempt >= 2) throw e
                 }
             }
+        } catch (e) {
+            console.error(e)
+            await hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+            replyhydro(global.mess.error.fitur)
         }
-    } catch (e) {
-        replyhydro(`❌ Gagal memproses gambar`)
-        await hydro.sendMessage(m.chat, { react: { text: "❌", key: m.key } })
+
+    } else {
+        replytolak("❗ Format tidak didukung. Harap reply gambar,stiker atau video.")
     }
 }
 break
+
 case 'uhd': {
 	if (!quoted || !/image/.test(mime))
 		return replyhydro(
@@ -20709,6 +21954,25 @@ case 'tt': {
     const axios = require('axios')
     const cheerio = require('cheerio')
 
+    // ===============================
+    // 1️⃣ AMBIL DATA DARI NEXRAY API
+    // ===============================
+    let apiData = {}
+    try {
+      const api = await axios.get(
+        `https://api.nexray.web.id/downloader/tiktok?url=${encodeURIComponent(text)}`
+      )
+
+      if (api.data?.status) {
+        apiData = api.data.result
+      }
+    } catch (e) {
+      console.log('API NexRay error:', e.message)
+    }
+
+    // ===============================
+    // 2️⃣ SCRAPE SAVETT (MEDIA BACKUP)
+    // ===============================
     const headers = {
       'Content-Type': 'application/x-www-form-urlencoded',
       Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -20716,9 +21980,10 @@ case 'tt': {
       Referer: 'https://savett.cc/en1/download',
       'User-Agent': 'Mozilla/5.0 (Linux; Android 10) Chrome/139.0.0.0 Mobile Safari/537.36'
     }
+
     const page = await axios.get('https://savett.cc/en1/download')
     const csrf = page.data.match(/name="csrf_token" value="([^"]+)"/)?.[1]
-    const cookie = page.headers['set-cookie'].map(v => v.split(';')[0]).join('; ')
+    const cookie = page.headers['set-cookie']?.map(v => v.split(';')[0]).join('; ')
 
     const post = await axios.post(
       'https://savett.cc/en1/download',
@@ -20727,51 +21992,59 @@ case 'tt': {
     )
 
     const $ = cheerio.load(post.data)
-    const stats = []
-    $('#video-info .my-1 span').each((_, el) => stats.push($(el).text().trim()))
 
-    const data = {
-      username: $('#video-info h3').first().text().trim() || '-',
-      views: stats[0] || '0',
-      likes: stats[1] || '0',
-      bookmarks: stats[2] || '0',
-      comments: stats[3] || '0',
-      shares: stats[4] || '0',
-      duration: $('#video-info p.text-muted').first().text().replace(/Duration:/i, '').trim(),
-      type: null,
-      mp4: { nowm: [], wm: [] },
-      mp3: [],
+    let data = {
+      username: apiData?.author?.fullname || $('#video-info h3').first().text().trim() || '-',
+      desc: apiData?.title || '-',
+      duration: apiData?.duration || '-',
+      likes: apiData?.stats?.likes || '0',
+      comments: apiData?.stats?.comment || '0',
+      shares: apiData?.stats?.share || '0',
+      views: apiData?.stats?.views || '0',
+      mp4: [],
+      mp3: apiData?.music_info?.url || null,
       slides: []
     }
 
-    // === PHOTO SLIDES ===
+    // ===============================
+    // 3️⃣ CEK PHOTO SLIDES
+    // ===============================
     const slides = $('.carousel-item[data-data]')
     if (slides.length) {
-      data.type = 'photo'
       slides.each((_, el) => {
         try {
           const json = JSON.parse($(el).attr('data-data').replace(/&quot;/g, '"'))
           json.URL?.forEach(u => data.slides.push(u))
         } catch {}
       })
-    } else {
-      // === VIDEO ===
-      data.type = 'video'
-      $('#formatselect option').each((_, el) => {
-        const label = $(el).text().toLowerCase()
-        const raw = $(el).attr('value')
-        if (!raw) return
-        try {
-          const json = JSON.parse(raw.replace(/&quot;/g, '"'))
-          if (label.includes('mp4') && !label.includes('watermark')) data.mp4.nowm.push(...json.URL)
-          if (label.includes('watermark')) data.mp4.wm.push(...json.URL)
-          if (label.includes('mp3')) data.mp3.push(...json.URL)
-        } catch {}
-      })
     }
 
-    // === SEND PHOTO SLIDES ===
-    if (data.type === 'photo' && data.slides.length) {
+    // ===============================
+    // 4️⃣ CEK VIDEO FORMAT
+    // ===============================
+    $('#formatselect option').each((_, el) => {
+      const label = $(el).text().toLowerCase()
+      const raw = $(el).attr('value')
+      if (!raw) return
+
+      try {
+        const json = JSON.parse(raw.replace(/&quot;/g, '"'))
+
+        if (label.includes('mp4') && !label.includes('watermark')) {
+          data.mp4.push(...json.URL)
+        }
+      } catch {}
+    })
+
+    // Prioritas HD dari API
+    const videoUrl =
+      apiData?.data ||
+      data.mp4[0]
+
+    // ===============================
+    // 📸 SEND PHOTO
+    // ===============================
+    if (data.slides.length) {
       let cards = await Promise.all(
         data.slides.map(async (img, i) => ({
           header: proto.Message.InteractiveMessage.Header.create({
@@ -20794,11 +22067,14 @@ case 'tt': {
             interactiveMessage: {
               body: {
                 text: `📸 *Tiktok Photo*
-👤 User : *${data.username}*
-❤️ Like : ${data.likes}
-💬 Komen: ${data.comments}
-🔄 Share: ${data.shares}
-👀 View : ${data.views}`
+👤 User   : *${data.username}*
+❤️ Like   : ${data.likes}
+💬 Komen  : ${data.comments}
+🔄 Share  : ${data.shares}
+👀 View   : ${data.views}
+
+📝 Deskripsi:
+${data.desc}`
               },
               carouselMessage: { cards, messageVersion: 1 }
             }
@@ -20810,8 +22086,9 @@ case 'tt': {
       return hydro.relayMessage(m.chat, msg.message, { messageId: msg.key.id })
     }
 
-    // === SEND VIDEO ===
-    const videoUrl = data.mp4.nowm[0] || data.mp4.wm[0]
+    // ===============================
+    // 🎥 SEND VIDEO
+    // ===============================
     if (!videoUrl) throw 'Video tidak ditemukan'
 
     await hydro.sendMessage(
@@ -20819,19 +22096,23 @@ case 'tt': {
       {
         video: { url: videoUrl },
         caption: `🎥 *Tiktok Video*
-👤 User : *${data.username}*
-⏱ Durasi: ${data.duration}
-❤️ Like  : ${data.likes}
-💬 Komen : ${data.comments}
-🔄 Share : ${data.shares}
-👀 View  : ${data.views}`,
-        buttons: [
+👤 User   : *${data.username}*
+⏱ Durasi : ${data.duration}
+❤️ Like   : ${data.likes}
+💬 Komen  : ${data.comments}
+🔄 Share  : ${data.shares}
+👀 View   : ${data.views}
+
+📝 Deskripsi:
+${data.desc}`,
+        footer: "Powered by Alya chan assistant 🚀",
+        buttons: data.mp3 ? [
           {
             buttonId: `${prefix}ttaudio ${text}`,
             buttonText: { displayText: '🎵 Ambil Musik' },
             type: 1
           }
-        ],
+        ] : [],
         headerType: 4
       },
       { quoted: m }
@@ -20846,89 +22127,123 @@ case 'tt': {
   }
 }
 break
+case 'ttaudio':
+case 'tiktokaudio':
+case 'ttmp3':
+case 'tiktokmp3': {
+  if (!text)
+    return replyhydro(`Contoh: ${prefix + command} https://tiktok.com/...`)
 
-case 'ttaudio': {
-  if (!text) return replyhydro(`Contoh: ${prefix + command} https://tiktok.com/...`);
-  hydro.sendMessage(m.chat, { react: { text: `🎵`, key: m.key } });
+  hydro.sendMessage(m.chat, { react: { text: '🎵', key: m.key } })
 
   try {
-    const apiUrl = `https://api.nexray.web.id/downloader/tiktok?url=${encodeURIComponent(text)}`;
-    const res = await fetchJson(apiUrl);
+    const axios = require('axios')
+    const cheerio = require('cheerio')
 
-    if (!res?.status || !res?.result) return replyhydro("❌ Gagal mengambil data musik.");
+    const headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      Origin: 'https://savett.cc',
+      Referer: 'https://savett.cc/en1/download',
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 10) Chrome/139.0.0.0 Mobile Safari/537.36'
+    }
+    const page = await axios.get('https://savett.cc/en1/download')
+    const csrf = page.data.match(/name="csrf_token" value="([^"]+)"/)?.[1]
+    const cookie = page.headers['set-cookie']
+      .map(v => v.split(';')[0])
+      .join('; ')
+    const post = await axios.post(
+      'https://savett.cc/en1/download',
+      `csrf_token=${encodeURIComponent(csrf)}&url=${encodeURIComponent(text)}`,
+      { headers: { ...headers, Cookie: cookie } }
+    )
 
-    const music = res.result.music_info?.url;
-    const title = res.result.music_info?.title || "Music Tiktok";
+    const $ = cheerio.load(post.data)
 
-    if (!music) return replyhydro("❌ Musik tidak ditemukan.");
+    let mp3List = []
 
-    await hydro.sendMessage(m.chat, {
-      audio: { url: music },
-      mimetype: "audio/mpeg",
-      fileName: `${title}.mp3`
-    }, { quoted: m });
+    $('#formatselect option').each((_, el) => {
+      const label = $(el).text().toLowerCase()
+      const raw = $(el).attr('value')
+      if (!raw) return
+      try {
+        const json = JSON.parse(raw.replace(/&quot;/g, '"'))
+        if (label.includes('mp3')) {
+          mp3List.push(...json.URL)
+        }
+      } catch {}
+    })
 
-    hydro.sendMessage(m.chat, { react: { text: `✅`, key: m.key } });
+    const audioUrl = mp3List[0]
+    if (!audioUrl) throw 'Audio tidak ditemukan'
 
-  } catch (e) {
-    console.log(e);
-    replyhydro("❌ Error mengambil musik.");
+    const username = $('#video-info h3').first().text().trim() || 'Tiktok Audio'
+
+    await hydro.sendMessage(
+      m.chat,
+      {
+        audio: { url: audioUrl },
+        mimetype: 'audio/mpeg',
+        fileName: `${username}.mp3`
+      },
+      { quoted: m }
+    )
+
+    hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+
+  } catch (err) {
+    console.error(err)
+    hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    replyhydro('❌ Gagal mengambil musik TikTok.')
   }
 }
 break;
 
 //==============================================
-case 'instagram':
-case 'igdl':
 case 'ig':
-case 'igvideo':
-case 'igimage':
-case 'igvid':
-case 'igimg': {
-
-  if (!text) {
-    return replyhydro('❌ Masukkan URL postingan / reel Instagram!')
-  }
+case 'igdl':
+case 'instagram': {
+  if (!text)
+    return replyhydro(`📌 Contoh: ${prefix + command} https://www.instagram.com/p/...`)
 
   await hydro.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
 
   try {
     const axios = require('axios')
-    const crypto = require('crypto')
+    const { igdl } = require('./scrape/igdl')
+    const data = await igdl(text)
 
-    const encryptUrl = (str) => {
-      const key = Buffer.from('qwertyuioplkjhgf', 'utf-8')
-      const cipher = crypto.createCipheriv('aes-128-ecb', key, null)
-      cipher.setAutoPadding(true)
-      let encrypted = cipher.update(str, 'utf-8', 'hex')
-      encrypted += cipher.final('hex')
-      return encrypted
-    }
+    if (!data.media.length) throw 'Media tidak ditemukan'
 
-    const encLink = encryptUrl(text)
+    const videos = data.media.filter(m => m.type === 'video')
+    const images = data.media.filter(m => m.type === 'image')
 
-    const { data } = await axios.get('https://api.videodropper.app/allinone', {
-      headers: {
-        accept: '*/*',
-        origin: 'https://fastvideosave.net',
-        referer: 'https://fastvideosave.net/',
-        'user-agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        url: encLink
-      }
-    })
+    if (videos.length) {
+      for (let i = 0; i < videos.length; i++) {
+        const res = await axios.get(videos[i].download, {
+          responseType: 'arraybuffer',
+          headers: { 'User-Agent': 'Mozilla/5.0' }
+        })
 
-    if (!data || data.fetch !== true) {
-      throw 'Fetch gagal'
-    }
-
-    if (Array.isArray(data.video) && data.video.length > 0) {
-      for (const v of data.video) {
         await hydro.sendMessage(
           m.chat,
           {
-            video: { url: v.video },
-            caption: `📥 *Instagram Video*`
+            video: Buffer.from(res.data),
+            mimetype: 'video/mp4',
+            fileName: `instagram_${i + 1}.mp4`,
+            caption:
+`📥 *Instagram Video*
+👤 Request by : @${pushname}
+
+⚙️ Powered by : ${botname}`,
+            buttons: i === 0 ? [
+              {
+                buttonId: `${prefix}igmp3 ${text}`,
+                buttonText: { displayText: '🎵 ambil audio' },
+                type: 1
+              }
+            ] : [],
+            headerType: 4
           },
           { quoted: m }
         )
@@ -20938,28 +22253,102 @@ case 'igimg': {
       return
     }
 
-    if (Array.isArray(data.image) && data.image.length > 0) {
-      for (const img of data.image) {
-        await hydro.sendMessage(
-          m.chat,
-          {
-            image: { url: img },
-            caption: `📥 *Instagram Image*`
-          },
-          { quoted: m }
-        )
-      }
+    if (images.length) {
+
+      const cards = await Promise.all(
+        images.map(async (item, i) => ({
+          header: proto.Message.InteractiveMessage.Header.create({
+            ...(await prepareWAMessageMedia(
+              { image: { url: item.download } },
+              { upload: hydro.waUploadToServer }
+            )),
+            title: '',
+            subtitle: `Foto ${i + 1} dari ${images.length}`,
+            hasMediaAttachment: false
+          }),
+          body: { text: '' },
+          nativeFlowMessage: { buttons: [] }
+        }))
+      )
+
+      const msg = generateWAMessageFromContent(
+        m.chat,
+        {
+          viewOnceMessage: {
+            message: {
+              interactiveMessage: {
+                body: {
+                  text:
+`📸 *Instagram Post*
+👤 Request by : @${pushname}
+
+📦 Total Media : ${images.length}
+⚙️ Powered by : ${botname}`
+                },
+                carouselMessage: {
+                  cards,
+                  messageVersion: 1
+                }
+              }
+            }
+          }
+        },
+        { quoted: m }
+      )
+
+      await hydro.relayMessage(
+        m.chat,
+        msg.message,
+        { messageId: msg.key.id }
+      )
 
       await hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
       return
     }
 
-    throw 'Media tidak ditemukan'
+    throw 'Tipe media tidak dikenali'
 
-  } catch (e) {
-    console.error('IGDL ERROR:', e)
+  } catch (err) {
+    console.error(err)
     await hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
     replyhydro('❌ Gagal mengambil media Instagram.')
+  }
+}
+break
+case 'igmp3': {
+  if (!text) return replyhydro('❌ URL Instagram tidak valid')
+
+  hydro.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
+
+  try {
+    const axios = require('axios')
+    const { igdl } = require('./scrape/igdl')
+    const { toAudio } = require('./lib/converter')
+
+    const data = await igdl(text)
+    const video = data.media.find(m => m.type === 'video')
+
+    if (!video) throw 'Video tidak ditemukan'
+
+    const res = await axios.get(video.download, {
+      responseType: 'arraybuffer',
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    })
+
+    const audio = await toAudio(Buffer.from(res.data), 'mp4')
+
+    await hydro.sendMessage(
+      m.chat,
+      { audio: audio, mimetype: 'audio/mpeg' },
+      { quoted: m }
+    )
+
+    await hydro.sendMessage(m.chat, { react: { text: '🎵', key: m.key } })
+
+  } catch (err) {
+    console.error(err)
+    await hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    replyhydro('❌ Gagal convert ke MP3.')
   }
 }
 break
@@ -20973,32 +22362,6 @@ const cption = data.result.title || ''
 hydro.sendMessage(m.chat, { caption: cption, video: { url: vidnya } }, { quoted: m });
 }
 break
-case 'ttaudio':
-case 'tiktokaudio':
-case 'ttmp3':
-case 'tiktokmp3': {
-  if (!text) return replyhydro(`📌 Contoh penggunaan:\n${prefix + command} https://vt.tiktok.com/...`);
-  
-  hydro.sendMessage(m.chat, { react: { text: '🎶', key: m.key } });
-
-  try {
-    const res = await fetchJson(`https://api.nekolabs.my.id/downloader/tiktok?url=${encodeURIComponent(text)}`);
-    
-    if (!res || !res.success || !res.result?.musicUrl) {
-      throw new Error('Audio tidak ditemukan dalam hasil API.');
-    }
-
-    await hydro.sendMessage(m.chat, {
-      audio: { url: res.result.musicUrl },
-      mimetype: 'audio/mp4'
-    }, { quoted: m });
-
-  } catch (err) {
-    console.error('❌ Error tiktokaudio:', err);
-    replyhydro('❌ Gagal mengambil audio dari TikTok. Pastikan link valid atau coba lagi nanti.');
-  }
-}
-break;
 case 'ghstalk': case 'githubstalk':{
 hydro.sendMessage(m.chat, { react: { text: `⏱️`, key: m.key }})
 if (!q) return replyhydro(`Example ${prefix+command} DGXeon`)
@@ -23042,7 +24405,7 @@ if (!Antilinkgc) return replyhydro('Already deactivated')
 let off = ntlinkgc.indexOf(from)
 ntlinkgc.splice(off, 1)
 fs.writeFileSync('./database/antilinkgc.json', JSON.stringify(ntlinkgc))
-replyhydro('Success in turning off antiwame in this group')
+replyhydro('Success in turning off antilinkgc in this group')
 } else {
 replyhydro(`Contoh: ${prefix + command} on/off`)
   }
@@ -23815,14 +25178,17 @@ case 'hapusbackground': {
     if (!/image\/(jpe?g|png)/.test(mime))
         return m.reply(`Format *${mime}* tidak didukung! Kirim gambar jpg/png.`);
 
-    m.reply("⏳ Sedang menghapus background, tunggu sebentar...");
+    await hydro.sendMessage(m.chat, { react: { text: '⏳', key: m.key } });
 
     try {
+        const axios = require("axios");
+        const FormData = require("form-data");
+
         let imgBuffer = await m.quoted.download();
 
         const form = new FormData();
         form.append("file", imgBuffer, {
-            filename: "foto.jpg",
+            filename: "removebg.jpg",
             contentType: mime
         });
 
@@ -23832,7 +25198,7 @@ case 'hapusbackground': {
 
         let fileUrl = upload.data.data.url.replace("tmpfiles.org/", "tmpfiles.org/dl/");
 
-        let apiUrl = `https://api.elrayyxml.web.id/api/tools/removebg?url=${encodeURIComponent(fileUrl)}`;
+        let apiUrl = `https://api.nexray.web.id/tools/removebg?url=${encodeURIComponent(fileUrl)}`;
 
         let hasil = await axios.get(apiUrl, { responseType: "arraybuffer" });
 
@@ -23845,12 +25211,16 @@ case 'hapusbackground': {
             { quoted: m }
         );
 
+        await hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
+
     } catch (err) {
         console.error(err);
-        m.reply("❌ Gagal menghapus background.");
+        await hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } });
+        m.reply("Gagal menghapus background.");
     }
 }
 break;
+
 case 'towl': {
     if (!Ahmad) return replytolak("Fitur ini hanya bisa digunakan oleh owner.")
     if (!text) return replyhydro("Gunakan: towl on / towl off")
@@ -26019,86 +27389,394 @@ break;
 //=========================================\\
 case 'kerja':
 case 'bekerja': {
-  if (!m.isGroup) return replytolak(mess.only.group)
-function clockString(ms) {
-    let h = Math.floor(ms / 3600000)
-    let m = Math.floor(ms / 60000) % 60
-    let s = Math.floor(ms / 1000) % 60
-    return [h, m, s].map(v => v.toString().padStart(2, 0) ).join(':')
-}
-    let type = (args[0] || '').toLowerCase()
-    let users = global.db.users[m.sender]
-    let time = users.lastkerja + 30000
-    let __timers = (new Date - users.lastkerja)
-    let _timers = (1000 - __timers)
-    let timers = clockString(_timers)
+    if (!m.isGroup) return replytolak(mess.only.group)
 
-    let penumpan = ['mas mas', 'bapak bapak', 'cewe sma', 'bocil epep', 'emak emak']
-    let penumpang = penumpan[Math.floor(Math.random() * penumpan.length)]
-
-    let daganga = ['wortel', 'sawi', 'selada', 'tomat', 'seledri', 'cabai', 'daging', 'ikan', 'ayam']
-    let dagangan = daganga[Math.floor(Math.random() * daganga.length)]
-    
-    let pasie = ['sakit kepala', 'cedera', 'luka bakar', 'patah tulang']
-    let pasien = pasie[Math.floor(Math.random() * pasie.length)]
-
-    let pane = ['Wortel', 'Kubis', 'stowbery', 'teh', 'padi', 'jeruk', 'pisang', 'semangka', 'durian', 'rambutan']
-    let panen = pane[Math.floor(Math.random() * pane.length)]
-
-    let bengke = ['mobil', 'motor', 'becak', 'bajai', 'bus', 'angkot', 'becak', 'sepeda']
-    let bengkel = bengke[Math.floor(Math.random() * bengke.length)]
-
-    let ruma = ['Membangun Rumah', 'Membangun Gedung', 'Memperbaiki Rumah', 'Memperbaiki Gedung', 'Membangun Fasilitas Umum', 'Memperbaiki Fasilitas Umum']
-    let rumah = ruma[Math.floor(Math.random() * ruma.length)]
-
-    if (/kerja/i.test(command)) {
-        switch (type) {
-            case 'ojek':
-if (new Date - users.lastkerja < 300000) return replyhydro(`Kamu sudah bekerja\nSaatnya istirahat selama ${clockString(time - new Date())}`)
-let hasilojek = `${Math.floor(Math.random() * 150000)}`.trim()
-users.money += hasilojek * 1
-	              users.lastparming = new Date * 1
-replyhydro(`Kamu Sudah Mengantarkan *${penumpang}* 🚗\nDan mendapatkan uang senilai *Rp ${hasilojek} ${global.rpg.emoticon('money')}*`)
-break
-            case 'pedagang':
-if (new Date - users.lastkerja < 300000) return replyhydro(`Kamu sudah bekerja,Saatnya istirahat selama\n🕜 ${clockString(time - new Date())}`)
-let hasildagang = `${Math.floor(Math.random() * 150000)}`.trim()
-users.money += hasildagang * 1
-	              users.lastparming = new Date * 1
-replyhydro(`Ada pembeli yg membeli *${dagangan}* 🛒\nDan mendapatkan uang senilai *Rp ${hasildagang} ${global.rpg.emoticon('money')}*`)
-break
-            case 'dokter':
-if (new Date - users.lastkerja < 300000) return replyhydro(`Kamu sudah bekerja,Saatnya istirahat selama\n🕜 ${clockString(time - new Date())}`)
-let hasildokter = `${Math.floor(Math.random() * 150000)}`.trim()
-users.money += hasildokter * 1
-	              users.lastparming = new Date * 1
-replyhydro(`Kamu menyembuhkan pasien *${pasien}* 💉\nDan mendapatkan uang senilai *Rp ${hasildokter}* ${global.rpg.emoticon('money')}`)
-break
-            case 'petani':
-if (new Date - users.lastkerja < 300000) return replyhydro(`Kamu sudah bekerja,Saatnya istirahat selama\n🕜 ${clockString(time - new Date())}`)
-let hasiltani = `${Math.floor(Math.random() * 150000)}`.trim()
-users.money += hasiltani * 1
-	              users.lastparming = new Date * 1
-replyhydro(`${panen} Sudah Panen !🌽 Dan menjualnya 🧺\nDan mendapatkan uang senilai Rp *${hasiltani} ${global.rpg.emoticon('money')}*`)
-break
-            case 'montir':
-if (new Date - users.lastkerja < 300000) return replyhydro(`Kamu sudah bekerja,Saatnya istirahat selama\n🕜 ${clockString(time - new Date())}`)
-let hasilmontir = `${Math.floor(Math.random() * 150000)}`.trim()
-users.money += hasilmontir * 1
-	              users.lastparming = new Date * 1
-replyhydro(`Kamu Baru saja mendapatkan pelanggan dan memperbaiki *${bengkel} 🔧*\nDan kamu mendapatkan uang senilai *Rp ${hasilmontir}* ${global.rpg.emoticon('money')}`)
-break
-            case 'kuli':
-if (new Date - users.lastkerja < 300000) return replyhydro(`Kamu sudah bekerja,Saatnya istirahat selama\n🕜 ${clockString(time - new Date())}`)
-let hasilkuli = `${Math.floor(Math.random() * 150000)}`.trim()
-users.money += hasilkuli * 1
-	              users.lastparming = new Date * 1
-replyhydro(`Kamu baru saja selesai ${rumah} 🔨\nDan mendapatkan uang senilai *Rp ${hasilkuli} ${global.rpg.emoticon('money')}*`)
-break
-            default:
-return replyhydro(`_*Pilih Pekerjaan Yang Kamu Inginkan*_\n\n_• Kuli_ \n_• Montir_ \n_• Petani_ \n_• Dokter_ \n_• Pedagang_ \n_• Ojek_ \n\nContoh Penggunaan :\nkerja Kuli`)
-        }
+    function clockString(ms) {
+        let h = Math.floor(ms / 3600000)
+        let mnt = Math.floor(ms / 60000) % 60
+        let s = Math.floor(ms / 1000) % 60
+        return [h, mnt, s].map(v => v.toString().padStart(2, 0)).join(':')
     }
+
+    let user = global.db.users[m.sender]
+    if (!user) return replyhydro("User tidak ditemukan!")
+
+    if (!user.money) user.money = 0
+    if (!user.stamina) user.stamina = 100
+    if (!user.lastkerja) user.lastkerja = 0
+    if (!user.jobxp) user.jobxp = 0
+    if (!user.joblevel) user.joblevel = 1
+    if (!user.jabatan) user.jabatan = "Pemula"
+    if (!user.pingsan) user.pingsan = false
+    if (!user.lastdaily) user.lastdaily = 0
+
+    let cooldown = 300000
+    let type = (args[0] || '').toLowerCase()
+
+    function random(list) {
+        return list[Math.floor(Math.random() * list.length)]
+    }
+
+let jobs = {
+    ojek: {
+        min: 15000, max: 90000,
+        action: [
+            "🛵 Mengantar pelanggan ke kantor",
+            "📦 Mengirim paket express",
+            "🌧️ Narik saat hujan deras",
+            "💵 Dapat tip besar dari pelanggan"
+        ]
+    },
+    pedagang: {
+        min: 30000, max: 150000,
+        action: [
+            "🛒 Dagangan laris manis",
+            "🌶️ Jual cabai super pedas",
+            "🍗 Jual ayam potong",
+            "🐟 Jual ikan segar"
+        ]
+    },
+    dokter: {
+        min: 80000, max: 250000,
+        action: [
+            "🩺 Menyembuhkan pasien",
+            "💉 Operasi darurat",
+            "🚑 Menangani kecelakaan",
+            "🦴 Mengobati patah tulang"
+        ]
+    },
+    petani: {
+        min: 20000, max: 120000,
+        action: [
+            "🌾 Panen padi",
+            "🍉 Panen semangka",
+            "🍊 Panen jeruk",
+            "🥭 Panen durian"
+        ]
+    },
+    montir: {
+        min: 40000, max: 160000,
+        action: [
+            "🚗 Perbaiki mesin mobil",
+            "🏍️ Servis motor",
+            "🚌 Ganti oli bus",
+            "⚡ Tune up kendaraan listrik"
+        ]
+    },
+    kuli: {
+        min: 50000, max: 170000,
+        action: [
+            "🏗️ Bangun rumah",
+            "🛣️ Cor jalan",
+            "🏢 Bangun gedung",
+            "🏫 Renovasi sekolah"
+        ]
+    },
+    programmer: {
+        min: 60000, max: 250000,
+        action: [
+            "💻 Selesaikan project website",
+            "🐛 Fix bug aplikasi",
+            "🌐 Deploy server",
+            "🤖 Buat bot WhatsApp"
+        ]
+    },
+    youtuber: {
+        min: 20000, max: 300000,
+        action: [
+            "🔥 Video trending",
+            "🎥 Live ramai penonton",
+            "💎 Dapat sponsor",
+            "📱 Shorts viral"
+        ]
+    },
+    polisi: {
+        min: 40000, max: 180000,
+        action: [
+            "🚔 Tangkap penjahat",
+            "🛡️ Amankan demo",
+            "🌙 Patroli malam",
+            "🔎 Selidiki kasus"
+        ]
+    },
+    guru: {
+        min: 30000, max: 140000,
+        action: [
+            "📚 Mengajar matematika",
+            "📝 Memberi ujian",
+            "📖 Bimbingan belajar",
+            "🎓 Dapat bonus sekolah"
+        ]
+    },
+    chef: {
+        min: 35000, max: 160000,
+        action: [
+            "👨‍🍳 Masakan dipuji",
+            "🍽️ Catering besar",
+            "🍜 Buka restoran baru",
+            "📺 Masuk TV kuliner"
+        ]
+    },
+    nelayan: {
+        min: 20000, max: 110000,
+        action: [
+            "🎣 Tangkap ikan besar",
+            "🦐 Dapat udang segar",
+            "🌊 Hasil laut melimpah",
+            "🐠 Jual hasil laut"
+        ]
+    },
+    driver: {
+        min: 25000, max: 120000,
+        action: [
+            "🚗 Orderan full",
+            "💵 Dapat tip besar",
+            "📦 Antar paket kilat",
+            "🛣️ Trip luar kota"
+        ]
+    },
+    arsitek: {
+        min: 70000, max: 280000,
+        action: [
+            "🏗️ Desain rumah mewah",
+            "🏢 Proyek mall",
+            "🌇 Desain apartemen",
+            "🏛️ Tender pemerintah"
+        ]
+    },
+    pilot: {
+        min: 100000, max: 400000,
+        action: [
+            "✈️ Penerbangan internasional",
+            "🛬 Landing sukses",
+            "👑 Terbangkan VIP",
+            "🌍 Trip jarak jauh"
+        ]
+    }
+}
+
+let vipJobs = {
+    ceo: {
+        min: 300000, max: 800000,
+        action: [
+            "🏢 Akuisisi perusahaan",
+            "💼 Deal proyek miliaran",
+            "🌎 Ekspansi bisnis global"
+        ]
+    },
+    investor: {
+        min: 250000, max: 700000,
+        action: [
+            "📈 Saham naik drastis",
+            "💎 Startup sukses besar",
+            "🏦 Dapat dividen jumbo"
+        ]
+    }
+}
+
+    if (type) {
+
+        if (user.pingsan)
+            return replyhydro("💀 Kamu pingsan! Gunakan .rumahsakit")
+
+        let job = jobs[type]
+        if (!job && user.joblevel >= 10) job = vipJobs[type]
+
+        if (!job) return replyhydro("Pekerjaan tidak tersedia / level kurang.")
+
+        if (new Date - user.lastkerja < cooldown)
+            return replyhydro(`⏳ Tunggu Kamu kelelahan, istirahatlah sebentar dan coba lagi dalam \n${clockString(cooldown - (new Date - user.lastkerja))}`)
+
+        if (user.stamina < 20)
+            return replyhydro("😩 Stamina kurang! Gunakan .istirahat")
+
+        if (Math.random() < 0.05) {
+            user.stamina = 0
+            user.pingsan = true
+            user.lastkerja = Date.now()
+            return replyhydro(
+`💥 Kecelakaan kerja parah!
+Kamu pingsan dan harus dirawat!
+
+Gunakan .rumahsakit`
+            )
+        }
+
+        if (Math.random() < 0.15) {
+            user.stamina -= 20
+            user.lastkerja = Date.now()
+            return replyhydro(`⚠️ Kamu gagal bekerja!\nStamina -20\nSisa: ${user.stamina}`)
+        }
+
+        let actionText = random(job.action)
+
+        let baseSalary = Math.floor(Math.random() * (job.max - job.min + 1)) + job.min
+        let levelBonus = Math.floor(baseSalary * (user.joblevel * 0.1))
+        let totalSalary = baseSalary + levelBonus
+
+        let rareText = ""
+        if (Math.random() < 0.05) {
+            let rare = Math.floor(totalSalary * 0.5)
+            totalSalary += rare
+            rareText = `\n🌟 Bonus Langka +Rp ${rare}`
+        }
+
+        let pajakPersen = Math.floor(Math.random() * 11) + 5
+        let pajak = Math.floor(totalSalary * pajakPersen / 100)
+        totalSalary -= pajak
+
+        user.money += totalSalary
+
+        let xpGain = 20
+        user.jobxp += xpGain
+
+        let levelUp = ""
+        if (user.jobxp >= user.joblevel * 100) {
+            user.jobxp = 0
+            user.joblevel++
+            levelUp = `\n🎉 LEVEL UP! Sekarang Level ${user.joblevel}`
+        }
+
+        if (user.joblevel >= 20) user.jabatan = "Direktur"
+        else if (user.joblevel >= 15) user.jabatan = "Manager"
+        else if (user.joblevel >= 10) user.jabatan = "Senior"
+        else if (user.joblevel >= 5) user.jabatan = "Staff"
+
+        let staminaUsed = 15
+        user.stamina -= staminaUsed
+        if (user.stamina <= 0) {
+            user.stamina = 0
+            user.pingsan = true
+        }
+
+        user.lastkerja = Date.now()
+
+        return replyhydro(
+`💼 ${type.toUpperCase()}
+${actionText}
+
+🏷 Jabatan: ${user.jabatan}
+📈 Level: ${user.joblevel}
+
+💰 Gaji: Rp ${baseSalary}
+🎯 Bonus Level: Rp ${levelBonus}
+${rareText}
+
+🧾 Pajak ${pajakPersen}%: -Rp ${pajak}
+
+━━━━━━━━━━━━━━━
+💵 Total: Rp ${totalSalary}
+
+⭐ XP +${xpGain}
+💪 Stamina -${staminaUsed}
+🔋 Sisa Stamina: ${user.stamina}
+${levelUp}`
+        )
+    }
+
+    let list = Object.keys(jobs).map(v => ({
+        header: "",
+        title: v.toUpperCase(),
+        description: `Rp ${jobs[v].min} - Rp ${jobs[v].max}`,
+        id: `.kerja ${v}`
+    }))
+
+    if (user.joblevel >= 10) {
+        Object.keys(vipJobs).forEach(v => {
+            list.push({
+                header: "VIP",
+                title: v.toUpperCase(),
+                description: `Rp ${vipJobs[v].min} - Rp ${vipJobs[v].max}`,
+                id: `.kerja ${v}`
+            })
+        })
+    }
+
+    let msg = generateWAMessageFromContent(m.chat, {
+        viewOnceMessage: {
+            message: {
+                messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 },
+                interactiveMessage: {
+                    body: {
+                        text: `💼 *PILIH PEKERJAANMU*
+
+Level mempengaruhi gajimu.
+
+Level kamu: ${user.joblevel}
+Stamina: ${user.stamina}`
+                    },
+                    nativeFlowMessage: {
+                        buttons: [{
+                            name: "single_select",
+                            buttonParamsJson: JSON.stringify({
+                                title: "PILIH PEKERJAAN",
+                                sections: [{ title: "Daftar Pekerjaan", rows: list }]
+                            })
+                        }]
+                    }
+                }
+            }
+        }
+    }, { quoted: m }, {})
+
+    await hydro.relayMessage(msg.key.remoteJid, msg.message, { messageId: msg.key.id })
+}
+break
+
+case 'istirahat': {
+    let user = global.db.users[m.sender]
+    let regen = 30
+    user.stamina += regen
+    if (user.stamina > 100) user.stamina = 100
+    replyhydro(`🍺 Kamu beristirahat\nStamina +${regen}\nSekarang: ${user.stamina}`)
+}
+break
+
+case 'rumahsakit': {
+    let user = global.db.users[m.sender]
+    if (!user.pingsan) return replyhydro("Kamu tidak pingsan.")
+
+    let biaya = 50000
+    if (user.money < biaya) return replyhydro("Uang tidak cukup.")
+
+    user.money -= biaya
+    user.pingsan = false
+    user.stamina = 50
+
+    replyhydro(`🏥 Dirawat di rumah sakit\nBiaya: Rp ${biaya}\nStamina: 50`)
+}
+break
+
+
+// ================= DAILY =================
+case 'dailykerja': {
+    let user = global.db.users[m.sender]
+    let cooldown = 86400000
+
+    if (Date.now() - user.lastdaily < cooldown)
+        return replyhydro("Daily sudah diambil.")
+
+    let bonus = 100000
+    user.money += bonus
+    user.lastdaily = Date.now()
+
+    replyhydro(`🎁 Daily Bonus +Rp ${bonus}`)
+}
+break
+
+
+// ================= RANK =================
+case 'rankkerja': {
+    let users = Object.entries(global.db.users)
+        .sort((a, b) => (b[1].money || 0) - (a[1].money || 0))
+        .slice(0, 10)
+
+    let text = "🏆 RANKING TERKAYA\n\n"
+    users.forEach((u, i) => {
+        text += `${i+1}. ${u[0].split('@')[0]} - Rp ${u[1].money}\n`
+    })
+
+    replyhydro(text)
 }
 break
 //=========================================\\
@@ -26288,7 +27966,7 @@ case 'leaderboard': {
 const getRandom = (ext) => {
             return `${Math.floor(Math.random() * 10000)}${ext}`
         }
-const { areJidsSameUser } = require ('@whiskeysockets/baileys')
+const { areJidsSameUser } = require ('socketon')
 function sort(property, ascending = true) {
   if (property) return (...args) => args[ascending & 1][property] - args[!ascending & 1][property]
   else return (...args) => args[ascending & 1] - args[!ascending & 1]
@@ -27339,10 +29017,13 @@ break
 case 'begal': {
     if (!m.isGroup) return replytolak(mess.only.group)
 
-    const COOLDOWN = 60 * 60 * 1000 
+    const delay = (ms) => new Promise(res => setTimeout(res, ms))
+    const stepDelay = 5000
+
+    const COOLDOWN = 60 * 60 * 1000
     const SUCCESS_CHANCE = 0.4
     const ESCAPE_CHANCE = 0.3
-    const JAIL_TIME = 90 * 60 * 1000 
+    const JAIL_TIME = 30 * 60 * 1000
     const MIN_MONEY_TARGET = 500000
 
     if (!args[0] || !args[1])
@@ -27367,7 +29048,6 @@ case 'begal': {
     sender.jailUntil ??= 0
     sender.kriminalLog ??= []
 
-
     if (now < sender.jailUntil) {
         let sisa = Math.ceil((sender.jailUntil - now) / 60000)
         return replyhydro(`👮 Kamu masih dipenjara ${sisa} menit`)
@@ -27378,6 +29058,7 @@ case 'begal': {
         let mnt = Math.ceil(sisa / 60000)
         return replyhydro(`⏳ Tunggu ${mnt} menit sebelum begal lagi`)
     }
+
     sender.lastBegal = now
 
     let targetId = number + '@s.whatsapp.net'
@@ -27396,7 +29077,7 @@ case 'begal': {
             target: number,
             hasil: 'DIGAGALKAN (ANTIBEGAL)'
         })
-        return replyhydro('🛡️ Target memakai *Anti Begal*, aksimu gagal!')
+        return replyhydro('🛡️ Target memakai Anti Begal!')
     }
 
     if (type === 'money' && target.money < MIN_MONEY_TARGET)
@@ -27408,32 +29089,32 @@ case 'begal': {
     let maxSteal = Math.max(1, Math.floor(target[type] * 0.3))
     let stolen = Math.floor(Math.random() * maxSteal) + 1
 
-    await hydro.sendMessage(m.chat, {
-        text: `🕶️ *AKSI BEGAL DIMULAI*\n🎯 Target: ${number}\n\n🚶 Mengintai lokasi...`
-    })
-    await sleep(5000)
+    const steps = [
+        `🕶️ *AKSI BEGAL DIMULAI*\n🎯 Target: ${number}`,
+        '🚶 Mengintai lokasi...',
+        '🚶‍♂️ Mendekati target...',
+        '🗡️ MENYERANG TARGET!',
+        '🏃‍♂️ Berusaha kabur...',
+        '📣 WARGA TERIAK!!! 🚨'
+    ]
 
-    await hydro.sendMessage(m.chat, {
-        text: "🚶‍♂️ *Mendekati target dengan perlahan...*"
-    })
-    await sleep(5000)
+    let sent = await hydro.sendMessage(m.chat, {
+        text: steps[0]
+    }, { quoted: m })
 
-    await hydro.sendMessage(m.chat, {
-        text: "🗡️ *MENYERANG TARGET!*"
-    })
-    await sleep(5000)
+    for (let i = 1; i < steps.length; i++) {
+        await delay(stepDelay)
+        await hydro.sendMessage(m.chat, {
+            text: steps[i],
+            edit: sent.key
+        })
+    }
 
-    await hydro.sendMessage(m.chat, {
-        text: "🏃‍♂️ *Berusaha kabur dari lokasi...*"
-    })
-    await sleep(5000)
+    await delay(stepDelay)
 
-    await hydro.sendMessage(m.chat, {
-        text: "📣 *WARGA TERIAK!!!* 🚨"
-    })
-    await sleep(5000)
-
+    // ======= LOGIKA HASIL =======
     if (Math.random() > SUCCESS_CHANCE) {
+
         if (Math.random() < ESCAPE_CHANCE) {
             sender.kriminalLog.push({
                 time: now,
@@ -27441,8 +29122,10 @@ case 'begal': {
                 target: number,
                 hasil: 'GAGAL (KABUR)'
             })
+
             return hydro.sendMessage(m.chat, {
-                text: `😮‍💨 *BEGAL GAGAL*\nKamu berhasil kabur tanpa hasil!`
+                text: `😮‍💨 *BEGAL GAGAL*\nKamu berhasil kabur tanpa hasil!`,
+                edit: sent.key
             })
         }
 
@@ -27459,9 +29142,11 @@ case 'begal': {
         })
 
         return hydro.sendMessage(m.chat, {
-            text: `🚨 *BEGAL GAGAL TOTAL*\n👥 Warga mengepung kamu\n👮 Polisi datang\n\n💸 Denda: ${fine} ${type}\n⛓️ Penjara: 30 menit`
+            text: `🚨 *BEGAL GAGAL TOTAL*\n👮 Ditangkap warga!\n💸 Denda: ${fine} ${type}\n⛓️ Penjara 30 menit`,
+            edit: sent.key
         })
     }
+
     stolen = Math.min(stolen, target[type])
     target[type] -= stolen
     sender[type] += stolen
@@ -27475,11 +29160,11 @@ case 'begal': {
     })
 
     await hydro.sendMessage(m.chat, {
-        text: `🎉 *BEGAL BERHASIL*\n🎯 Target: ${number}\n💰 Jenis: ${type.toUpperCase()}\n💸 Hasil: ${stolen}\n\n📈 Total ${type}: ${sender[type]}`
+        text: `🎉 *BEGAL BERHASIL*\n🎯 ${number}\n💰 +${stolen} ${type}\n📈 Total ${type}: ${sender[type]}`,
+        edit: sent.key
     })
 }
 break
-
 case 'kriminal': {
   let u = global.db.users[m.sender]
   if (!u || !u.kriminalLog?.length)
@@ -27489,7 +29174,7 @@ case 'kriminal': {
   u.kriminalLog.slice(-5).forEach((v, i) => {
     txt += `${i + 1}. ${new Date(v.time).toLocaleString()}\n`
     txt += `🎯 Target: ${v.target}\n`
-    txt += `📌 ${v.result}\n\n`
+    txt += `📌 Hasil: ${v.hasil}\n\n`
   })
 
   replyhydro(txt)
@@ -29076,54 +30761,49 @@ case 'sabung': {
         return replyhydro('⚠️ Selesaikan sabung sebelumnya dulu!')
 
     u.money -= bet
-    hydro.misi[id] = [
-        'Sabung Ayam',
-        setTimeout(() => delete hydro.misi[id], 30000)
-    ]
 
-    await hydro.sendMessage(m.chat, {
-        react: { text: '🐔', key: m.key }
-    })
-
-    await hydro.sendMessage(m.chat, {
-        text: `🐔 *SABUNG AYAM DIMULAI!*\n\n🏟️ Arena sedang disiapkan...`
-    })
-    await sleep(6000)
-
-    await hydro.sendMessage(m.chat, {
-        text: `🐔 *SABUNG AYAM DIMULAI!*\n\n⚔️ Kedua ayam dilepas ke arena...`
-    })
-    await sleep(6000)
-
-    await hydro.sendMessage(m.chat, {
-        text: `🐔 *SABUNG AYAM DIMULAI!*\n\n💨 Ayam saling menyerang dengan brutal!`
-    })
-    await sleep(6000)
+    const delay = (ms) => new Promise(res => setTimeout(res, ms))
+    const stepDelay = 7000 // 7 detik
 
     let winChance = 0.44
     let eventRoll = Math.random()
     let eventText = ''
 
+    const steps = [
+        '🐔 SABUNG AYAM DIMULAI!\n\n🏟️ Arena sedang disiapkan...',
+        '🐔 SABUNG AYAM DIMULAI!\n\n⚔️ Kedua ayam dilepas ke arena...',
+        '🐔 SABUNG AYAM DIMULAI!\n\n💨 Ayam saling menyerang brutal!'
+    ]
+
     if (eventRoll < 0.15) {
         winChance -= 0.2
-        eventText = '🚨 *POLISI MASUK ARENA!*\nChance menang menurun!'
+        eventText = '🚨 POLISI MASUK ARENA!\nChance menang menurun!'
     } else if (eventRoll < 0.35) {
         winChance += 0.2
-        eventText = '🎉 *PENONTON BERSORAK!*\nAyammu semakin brutal!'
+        eventText = '🎉 PENONTON BERSORAK!\nAyammu semakin brutal!'
     } else if (eventRoll < 0.5) {
-        eventText = '🔥 *AYAMU MENGAMUK!*\nSerangan makin ganas!'
+        eventText = '🔥 AYAMU MENGAMUK!\nSerangan makin ganas!'
     }
 
     if (eventText) {
-        await hydro.sendMessage(m.chat, {
-            text: `🐔 *SABUNG AYAM DIMULAI!*\n\n${eventText}`
-        })
-        await sleep(6000)
+        steps.push(`🐔 SABUNG AYAM DIMULAI!\n\n${eventText}`)
     }
-    await hydro.sendMessage(m.chat, {
-        text: `🐔 *SABUNG AYAM DIMULAI!*\n\n🎯 Serangan terakhir...`
-    })
-    await sleep(6000)
+
+    steps.push('🐔 SABUNG AYAM DIMULAI!\n\n🎯 Serangan terakhir...')
+
+    let sent = await hydro.sendMessage(m.chat, {
+        text: steps[0]
+    }, { quoted: m })
+
+    for (let i = 1; i < steps.length; i++) {
+        await delay(stepDelay)
+        await hydro.sendMessage(m.chat, {
+            text: steps[i],
+            edit: sent.key
+        })
+    }
+
+    await delay(stepDelay)
 
     let roll = Math.random()
     let hasilText = ''
@@ -29131,23 +30811,26 @@ case 'sabung': {
     if (roll < 0.05) {
         let hasil = bet * 5
         u.money += hasil
-        hasilText = `🚀 *JACKPOT!!!*\nAyammu membunuh lawan!\n\n💰 +Rp${hasil.toLocaleString()}`
+        hasilText = `🚀 JACKPOT!!!\nAyammu membunuh lawan!\n\n💰 +Rp${hasil.toLocaleString()}`
     } else if (roll > 0.95) {
-        hasilText = `💀 *AYAMU MATI DI ARENA!*\n\n💸 -Rp${bet.toLocaleString()}`
+        hasilText = `💀 AYAMU MATI DI ARENA!\n\n💸 -Rp${bet.toLocaleString()}`
     } else {
         let win = Math.random() < winChance
         if (win) {
             let hasil = bet * 2
             u.money += hasil
-            hasilText = `🏆 *AYAMU MENANG!*\n\n💰 +Rp${hasil.toLocaleString()}`
+            hasilText = `🏆 AYAMU MENANG!\n\n💰 +Rp${hasil.toLocaleString()}`
         } else {
-            hasilText = `❌ *AYAMU KALAH!*\n\n💸 -Rp${bet.toLocaleString()}`
+            hasilText = `❌ AYAMU KALAH!\n\n💸 -Rp${bet.toLocaleString()}`
         }
     }
 
     await hydro.sendMessage(m.chat, {
-        text: `🐔 *HASIL SABUNG AYAM*\n\n${hasilText}`
+        text: `🐔 HASIL SABUNG AYAM\n\n${hasilText}\n\n💰 Saldo sekarang: Rp${u.money.toLocaleString()}`,
+        edit: sent.key
     })
+
+    delete hydro.misi[id]
 }
 break
 
@@ -31323,7 +33006,7 @@ Dan health anda berkurang -80
 //==================================================================
 case 'repair': {
 if (!m.isGroup) return replytolak(mess.only.group)
-const {default: MessageType } = require ('@whiskeysockets/baileys')
+const {default: MessageType } = require ('socketon')
 
   let type = (args[0] || '').toLowerCase()
   let _type = (args[0] || '').toLowerCase()
@@ -32449,42 +34132,94 @@ break
 case 'balapan': {
   if (!m.isGroup) return replytolak(mess.only.group)
 
+  const delay = (ms) => new Promise(res => setTimeout(res, ms))
+  const stepDelay = 5000
+
   const sub = args[0]
+  let user = db.users[m.sender]
+  if (!user) return replyhydro('User tidak ditemukan')
+
+  user.money ??= 0
+  user.motor ??= 'Beat'
+  user.nitro ??= 0
+  user.balapanWin ??= 0
+  user.balapanLose ??= 0
+  user.wanted ??= 0
+  user.hospitalUntil ??= 0
+
+  const motors = {
+    Beat: { speed: 1, price: 0 },
+    Vario: { speed: 1.2, price: 500000 },
+    Ninja: { speed: 1.5, price: 2000000 },
+    R1: { speed: 2, price: 5000000 }
+  }
 
   if (!sub) {
     return m.reply(`
 🏁 *BALAPAN LIAR*
 
-Perintah yang tersedia:
-🚦 *.balapan open <taruhan>*
-→ Membuka balapan (min 100.000)
+🚦 .balapan open <taruhan>
+🏎️ .balapan terima
+❌ .balapan batal
+🏍️ .balapan beli
+⚙️ .balapan nitro
+🏆 .balapan rank
+📊 .balapan stats
 
-🏎️ *.balapan terima*
-→ Menerima balapan yang sedang open
-
-❌ *.balapan batal*
-→ Membatalkan balapan (khusus pembuat)
-
-⚠️ Risiko:
-• Bisa menang 💰
-• Bisa kalah total 💸
-• Bisa kena razia 🚓
-
-🔥 Balapan ilegal, adrenaline tinggi!
+Motor: ${user.motor}
+Nitro: ${user.nitro}
+Wanted: ${user.wanted}
 `)
   }
+
+  if (sub === 'beli') {
+    let type = args[1]
+
+    if (!type) {
+      let list = '🏍️ *DAFTAR MOTOR TERSEDIA*\n\n'
+      Object.keys(motors).forEach(m => {
+        list += `• ${m}\n`
+        list += `   💰 Harga: ${motors[m].price.toLocaleString()}\n`
+        list += `   ⚡ Speed: x${motors[m].speed}\n\n`
+      })
+      list += `Motor kamu sekarang: ${user.motor}`
+      return replyhydro(list)
+    }
+
+    if (!motors[type])
+      return replyhydro('❌ Motor tidak tersedia. Ketik .balapan beli untuk lihat daftar.')
+
+    if (user.motor === type)
+      return replyhydro('🏍️ Kamu sudah memakai motor ini')
+
+    if (user.money < motors[type].price)
+      return replyhydro('💸 Uang tidak cukup')
+
+    user.money -= motors[type].price
+    user.motor = type
+
+    return replyhydro(`🏍️ Berhasil beli ${type}\n💰 Sisa uang: ${user.money.toLocaleString()}`)
+  }
+
+  if (sub === 'nitro') {
+    const cost = 200000
+    if (user.money < cost) return replyhydro('💸 Uang tidak cukup')
+
+    user.money -= cost
+    user.nitro += 1
+    return replyhydro(`⚙️ Nitro berhasil dibeli (+1)\nNitro kamu: ${user.nitro}`)
+  }
+
   if (sub === 'open') {
     if (hydro.openBalapan)
-      return replyhydro('❌ Masih ada balapan open aktif')
+      return replyhydro('❌ Masih ada balapan aktif')
 
     let bet = parseInt(args[1])
     if (!bet || bet < 100000)
       return replyhydro('❌ Minimal taruhan 100.000')
 
-    let user = db.users[m.sender]
-    if (!user) return replyhydro('❌ User tidak ditemukan')
     if (user.money < bet)
-      return replyhydro('💸 Uangmu tidak cukup')
+      return replyhydro('💸 Uang tidak cukup')
 
     hydro.openBalapan = {
       creator: m.sender,
@@ -32492,111 +34227,127 @@ Perintah yang tersedia:
       taken: false,
       timeout: setTimeout(() => {
         hydro.openBalapan = null
-        m.reply('⌛ Balapan open expired, tidak ada yang menerima')
+        m.reply('⌛ Balapan expired')
       }, 30000)
     }
 
-    return m.reply(`
-🏁 *OPEN BALAPAN LIAR*
-👤 Pembuat: ${hydro.getName(m.sender)}
-💰 Taruhan: ${bet.toLocaleString()}
-
-🔥 Siapapun bisa masuk arena
-Balas: *.balapan terima*
-(30 detik)
-`)
+    return m.reply(`🏁 OPEN BALAPAN\n💰 Taruhan: ${bet.toLocaleString()}\nBalas: .balapan terima`)
   }
 
-  if (sub === 'terima') {
-    let race = hydro.openBalapan
-    if (!race) return replyhydro('❌ Tidak ada balapan open')
-    if (race.taken) return replyhydro('❌ Balapan sudah diambil')
-    if (m.sender === race.creator)
-      return replyhydro('❌ Tidak bisa melawan diri sendiri')
-
-    let A = db.users[race.creator]
-    let B = db.users[m.sender]
-    if (!A || !B) {
-      hydro.openBalapan = null
-      return replyhydro('❌ Data user tidak valid')
-    }
-    if (A.money < race.bet || B.money < race.bet) {
-      hydro.openBalapan = null
-      return replyhydro('❌ Salah satu uang tidak cukup')
-    }
-
-    race.taken = true
-    clearTimeout(race.timeout)
-
-    A.money -= race.bet
-    B.money -= race.bet
-
-    let p1 = hydro.getName(race.creator)
-    let p2 = hydro.getName(m.sender)
-
-    await m.reply(`🏁 *BALAPAN DIMULAI*\n${p1} VS ${p2}`)
-    await sleep(4500)
-
-    const stories = [
-      ['🚓 Polisi muncul dari belakang!', '💨 Semua nambah gas!'],
-      ['💥 Hampir crash di tikungan tajam!', '😱 Penonton teriak!'],
-      ['🔥 Nitro diaktifkan!', '⚡ Kecepatan makin gila!'],
-      ['🌧️ Hujan deras! Lintasan licin!', '🏍️ Kontrol motor diuji!'],
-      ['⚔️ Duel head-to-head!', '💢 Jarak makin tipis!']
-    ]
-
-    let story = stories[Math.floor(Math.random() * stories.length)]
-    await m.reply(story[0])
-    await sleep(5500)
-    await m.reply(story[1])
-    await sleep(5500)
-
-    await m.reply('🏁 Finish line terlihat!')
-    await sleep(7500)
-
-    let roll = Math.floor(Math.random() * 100)
-    let prize = race.bet * 2
-
-    if (roll < 45) {
-      A.money += prize
-      await m.reply(`
-🏆 *HASIL BALAPAN*
-🥇 Pemenang: ${p1}
-💰 Hadiah: ${prize.toLocaleString()}
-
-🔥 Finish sempurna!
-`)
-    } else if (roll < 90) {
-      B.money += prize
-      await m.reply(`
-🏆 *HASIL BALAPAN*
-🥇 Pemenang: ${p2}
-💰 Hadiah: ${prize.toLocaleString()}
-
-🔥 Comeback gila!
-`)
-    } else {
-      await m.reply(`
-🚓 *RAZIA MENDADAK!*
-❌ Polisi masuk lintasan
-💸 Taruhan hangus
-
-🔥 Balapan berakhir kacau!
-`)
-    }
-
-    hydro.openBalapan = null
-    break
-  }
   if (sub === 'batal') {
     let race = hydro.openBalapan
-    if (!race) return replyhydro('❌ Tidak ada balapan open')
+    if (!race) return replyhydro('❌ Tidak ada balapan')
     if (m.sender !== race.creator)
       return replyhydro('❌ Hanya pembuat yang bisa batal')
 
     clearTimeout(race.timeout)
     hydro.openBalapan = null
-    return replyhydro('❌ Balapan open dibatalkan')
+    return replyhydro('❌ Balapan dibatalkan')
+  }
+
+  if (sub === 'terima') {
+    let race = hydro.openBalapan
+    if (!race) return replyhydro('❌ Tidak ada balapan open')
+    if (m.sender === race.creator)
+      return replyhydro('❌ Tidak bisa lawan diri sendiri')
+
+    let A = db.users[race.creator]
+    let B = user
+
+    if (Date.now() < user.hospitalUntil)
+      return replyhydro('🏥 Kamu masih di rumah sakit')
+
+    if (A.money < race.bet || B.money < race.bet)
+      return replyhydro('💸 Salah satu uang tidak cukup')
+
+    clearTimeout(race.timeout)
+
+    A.money -= race.bet
+    B.money -= race.bet
+
+    let sent = await hydro.sendMessage(m.chat, {
+      text: `🏁 BALAPAN DIMULAI\n${hydro.getName(race.creator)} 🆚 ${hydro.getName(m.sender)}`
+    }, { quoted: m })
+
+    const steps = [
+      '🚦 Lampu hijau!',
+      '🏍️ Gas pol!',
+      '🔥 Nitro menyala!',
+      '⚔️ Saling salip!',
+      '🏁 Garis finish terlihat!'
+    ]
+
+    for (let s of steps) {
+      await delay(stepDelay)
+      await hydro.sendMessage(m.chat, { text: s, edit: sent.key })
+    }
+
+    await delay(stepDelay)
+
+    let powerA = motors[A.motor].speed + (A.nitro * 0.3) + Math.random()
+    let powerB = motors[B.motor].speed + (B.nitro * 0.3) + Math.random()
+
+    let crash = Math.random() < 0.1
+    let razia = Math.random() < (0.1 + (A.wanted + B.wanted) * 0.05)
+
+    if (crash) {
+      B.hospitalUntil = Date.now() + (10 * 60 * 1000)
+      await hydro.sendMessage(m.chat, {
+        text: `💥 CRASH!\n${hydro.getName(m.sender)} masuk RS 10 menit`,
+        edit: sent.key
+      })
+      hydro.openBalapan = null
+      break
+    }
+
+    if (razia) {
+      await hydro.sendMessage(m.chat, {
+        text: `🚓 RAZIA POLISI!\nTaruhan hangus`,
+        edit: sent.key
+      })
+      hydro.openBalapan = null
+      break
+    }
+
+    let winner = powerA > powerB ? A : B
+    let prize = race.bet * 2
+
+    winner.money += prize
+    winner.balapanWin++
+    winner.wanted++
+
+    await hydro.sendMessage(m.chat, {
+      text: `🏆 PEMENANG: ${winner === A ? hydro.getName(race.creator) : hydro.getName(m.sender)}\n💰 Hadiah: ${prize.toLocaleString()}`,
+      edit: sent.key
+    })
+
+    hydro.openBalapan = null
+  }
+
+  if (sub === 'rank') {
+    let sorted = Object.entries(db.users)
+      .filter(([id,u]) => u.balapanWin)
+      .sort((a,b) => b[1].balapanWin - a[1].balapanWin)
+      .slice(0,5)
+
+    let text = '🏆 RANK BALAPAN\n\n'
+    sorted.forEach((v,i)=>{
+      text += `${i+1}. ${hydro.getName(v[0])} - ${v[1].balapanWin} win\n`
+    })
+
+    return replyhydro(text || 'Belum ada data')
+  }
+
+  if (sub === 'stats') {
+    return replyhydro(`
+📊 STATS BALAPAN
+
+🏍️ Motor: ${user.motor}
+🏆 Win: ${user.balapanWin}
+💀 Lose: ${user.balapanLose}
+⚙️ Nitro: ${user.nitro}
+🚨 Wanted: ${user.wanted}
+`)
   }
 
 }
@@ -32777,10 +34528,20 @@ case 'backup': {
 break
 
 
-case 'intro': case 'intronya': {
- replyhydro('—————————𖤝𖣂—————————\n樂- *Kartu Intro*. . .\n𝐍𝐚𝐦𝐚:\n𝐔𝐦𝐮𝐫:\n𝐀𝐬𝐤𝐨𝐭:\n𝐊𝐞𝐥𝐚𝐬:\n𝐆𝐞𝐧𝐝𝐞𝐫:\n𝐏𝐞𝐬𝐚𝐧:\n\n————————𖤝:𖣂—————————')
+case 'intro': 
+case 'intronya': {
+replyhydro(`—————————𖤝𖣂—————————
+樂 - *Kartu Perkenalan*
+👤 Nama:
+📍 Domisili:
+🎮 Hobi:
+💼 Kesibukan:
+💬 Status:
+✨ Motto Hidup:
+————————𖤝:𖣂—————————`)
 }
 break
+
 
 case 'addowner':
 if (!Ahmad) return replytolak(mess.only.owner)
@@ -32941,40 +34702,119 @@ case 'bot': {
             })
 }
 break
+case 'sayang': {
+    if (!global.lastSayang) global.lastSayang = {}
+    const cooldown = 5000
+	const Ahmad = '6283166570663@s.whatsapp.net'
+
+
+    if (global.lastSayang[m.sender] && Date.now() - global.lastSayang[m.sender] < cooldown) {
+        return replyhydro('Pelan dikit napa, sayang bukan tombol spam 😒')
+    }
+    global.lastSayang[m.sender] = Date.now()
+
+    const roastMember = [
+        'Sayang? ke emak lu sana.',
+        'Heh santai, kita ga sedeket itu.',
+        'Sayang mulu, giliran disuruh serius ngilang.',
+        'Modus bau ketauan banget.',
+        'Lu kalo sayang beneran ga cuma ngetik doang.',
+        'Iya iya sayang, abis itu minta apa?',
+        'Sadar diri dikit napa 😌',
+        'Baru chat sekali udah sayang, halu tingkat dewa.',
+        'Jangan kebanyakan drama lu.',
+		'Sayang? ke siapa lu ngomong 😒',
+        'Heh jangan gampang bilang sayang, geli gue.',
+        'Sayang mulu, kerja kagak.',
+        'Baru chat udah sayang, standar lu rendah amat.',
+        'Lu kalo bilang sayang massal ya? copy paste perasaan?',
+        'Ih apaan sih tiba-tiba sayang, ga kenal juga.',
+        'Sayang doang, effort mana?',
+        'Bilang sayang tapi centang 2 doang dibiarin 😑'
+    ]
+
+    const roastAdmin = [
+        'Wah admin bilang sayang, noted.',
+        'Santai min, vibes nya adem.',
+        'Oke admin, sayang diterima.',
+        'Asik juga admin lagi soft hari ini.',
+        'Baik min, kita anggap valid.'
+    ]
+
+    const roastAhmad = [
+        'Hehe iya sayang juga kok 🤍',
+        'Owner ngomong sayang, auto nurut.',
+        'Siap boss, sayang balik ya.',
+        'Yang penting owner happy.',
+        'Sayang selalu buat owner 😌',
+        'Hehe siap, paling sayang sama owner.',
+        'Owner ngomong sayang tuh beda auranya.',
+        'Selalu sayang balik buat boss 😌',
+        'Kalau owner yang bilang, auto lembut.'
+    ]
+
+    const getRandom = arr => arr[Math.floor(Math.random() * arr.length)]
+
+    if (Math.random() < 0.10) {
+        replyhydro('Hm.')
+        break
+    }
+
+    if (m.sender === Ahmad) {
+    replyhydro(getRandom(roastAhmad))
+
+} else if (isGroupAdmins) {
+    replyhydro(getRandom(roastAdmin))
+} else {
+    replyhydro(getRandom(roastMember))
+}
+
+}
+break
 case 'p': {
     if (!global.lastP) global.lastP = {}
     const cooldown = 5000
 
     if (global.lastP[m.sender] && Date.now() - global.lastP[m.sender] < cooldown) {
-        return reply('pa pe pa pe atheis')
+        return replyhydro('pa pe pa pe atheis')
     }
     global.lastP[m.sender] = Date.now()
 
     const roastMember = [
-        'pa pe pa pe atheis',
-        'minimal salam bujank.',
-        'Huruf P itu singkatan dari *Permisi* kan? 😌',
-        'Sopan itu gratis, tinggal ketik salam 😉',
-        'pa pe pa pe 😑'
-    ]
+    'pa pe pa pe atheis',
+    'minimal salam bujank.',
+    'Huruf P itu singkatan dari *Permisi* kan? 😌',
+    'Sopan itu gratis, tinggal ketik salam 😉',
+    'Dateng cuma huruf P doang, effort lu setipis tisu warteg 🥲',
+    'P lagi P lagi… keyboard lu rusak apa emang stok kosakata segitu doang?',
+    'Minimal salam kek manusia, jangan kayak NPC side quest.',
+    'Huruf P mulu, gue kira lagi tes mic.',
+    'Dateng cuma bawa P, kayak paket COD tapi isinya batu.',
+    'Lu kalo jadi WiFi pasti lemot, sinyalnya cuma 1 huruf.',
+    'Chat lu minimalis banget, IKEA aja kalah.',
+    'Typing lama, kirimnya cuma P. Plot twist banget.',
+    'Huruf lain pada demo kali ya ga mau dipake? 😭'
+]
 
-    const roastAdmin = [
-        'Hehe admin datang 😄 jangan lupa salam ya',
-        'Siap admin 👍 salam dulu biar cakep',
-        'Admin datang 👮‍♂️ tapi salam dulu min 🙏'
-    ]
+const roastAdmin = [
+    'Hehe adminnya datang 😄 jangan lupa salam ya',
+    'Admin datang,tapi salam dulu minimal 🙏',
+    'Admin sih admin… tapi salam dulu biar auranya naik',
+    'Admin hadir 🙌 tapi jangan lupa etika dong min~',
+    'P mulu, tapi salam tetep nomor satu ya min 😎'
+]
 
     const getRandom = arr => arr[Math.floor(Math.random() * arr.length)]
 
     if (Math.random() < 0.2) {
-        reply('pa pe pa pe atheis')
+        replyhydro('pa pe pa pe atheis')
         break
     }
 
     if (isGroupAdmins | Ahmad) {
-        reply(getRandom(roastAdmin))
+        replyhydro(getRandom(roastAdmin))
     } else {
-        reply(getRandom(roastMember))
+        replyhydro(getRandom(roastMember))
     }
 }
 break
@@ -33078,17 +34918,176 @@ case 'kobo': {
     }
 }
 break;
-case 'swgc': {
-    if (!Ahmad) return replytolak(mess.only.owner);
-    await swgcHandler(m, hydro, store, text, Ahmad, mess, replytolak);
-}
-break;
+case 'swgc':
+case 'upswgc': {
+  if (!Ahmad) return replytolak(mess.only.owner)
 
-case 'sendstatus': {
-    if (!Ahmad) return replytolak(mess.only.owner);
-    await sendStatusHandler(m, args, hydro, Ahmad, replytolak, groupStatus);
+  const { fromBuffer } = require("file-type")
+  const fs = require("fs")
+  const path = require("path")
+
+  let content = {}
+  let buffer, ext, tempFile
+
+  if (m.quoted) {
+    try {
+      buffer = await m.quoted.download()
+      if (!buffer) return hydro.sendText(m.chat, "❌ Gagal mengambil media.")
+
+      ext = (await fromBuffer(buffer))?.ext || 'bin'
+      tempFile = path.join(__dirname, `tmp_${Date.now()}.${ext}`)
+      fs.writeFileSync(tempFile, buffer)
+
+      const quotedType = m.quoted.mtype || Object.keys(m.quoted.message || {})[0] || ''
+
+      if (/image/.test(quotedType)) {
+        content.image = { url: tempFile }
+        if (text) content.caption = text
+
+      } else if (/video/.test(quotedType)) {
+        content.video = { url: tempFile }
+        if (text) content.caption = text
+
+      } else if (/audio/.test(quotedType)) {
+        if (text) {
+          fs.unlinkSync(tempFile)
+          return hydro.sendText(m.chat, "❌ Audio tidak boleh pakai caption.")
+        }
+        content.audio = { url: tempFile }
+        content.ptt = false
+
+      } else {
+        fs.unlinkSync(tempFile)
+        return hydro.sendText(m.chat, "Reply harus image/video/audio.")
+      }
+
+    } catch {
+      return hydro.sendText(m.chat, "❌ Media gagal diproses.")
+    }
+
+  } else if (text) {
+    content.text = text
+  } else {
+    return hydro.sendText(m.chat, "Kirim media atau teks.")
+  }
+
+  let grupList = await store.chats.all()
+    .filter(v => v.id.endsWith('@g.us'))
+    .map(v => v.id)
+
+  if (!grupList.length) {
+    if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile)
+    return hydro.sendText(m.chat, "Bot tidak ada di grup manapun.")
+  }
+
+  let validGroups = []
+
+  validGroups.push({
+    title: "📢 Kirim ke Semua Grup",
+    description: `Total ${grupList.length} grup`,
+    id: `.sendstatusall ${encodeURIComponent(JSON.stringify(content))}`
+  })
+
+  for (let gid of grupList) {
+    try {
+      let metadata = await hydro.groupMetadata(gid)
+      validGroups.push({
+        title: metadata.subject,
+        description: gid,
+        id: `.sendstatus ${gid} ${encodeURIComponent(JSON.stringify(content))}`
+      })
+    } catch {}
+  }
+
+  let msg = generateWAMessageFromContent(m.chat, {
+    viewOnceMessage: {
+      message: {
+        interactiveMessage: {
+          body: { text: "```Pilih Grup Tujuan 📢```" },
+          nativeFlowMessage: {
+            buttons: [{
+              name: "single_select",
+              buttonParamsJson: JSON.stringify({
+                title: "PILIH GRUP",
+                sections: [{ title: "Daftar Grup", rows: validGroups }]
+              })
+            }]
+          }
+        }
+      }
+    }
+  }, { quoted: m })
+
+  await hydro.relayMessage(msg.key.remoteJid, msg.message, {
+    messageId: msg.key.id
+  })
 }
-break;
+break
+case 'sendstatus': {
+  if (!Ahmad) return replytolak(mess.only.owner)
+
+  const fs = require("fs")
+
+  const [groupId, ...contentARR] = args
+  const contentDecoded = JSON.parse(decodeURIComponent(contentARR.join(' ')))
+
+  try {
+    await groupStatus(groupId, contentDecoded)
+    hydro.sendText(m.chat, `✅ Berhasil kirim ke:\n${groupId}`)
+  } catch {
+    hydro.sendText(m.chat, `❌ Gagal kirim ke:\n${groupId}`)
+  }
+
+  if (contentDecoded?.image?.url && fs.existsSync(contentDecoded.image.url)) fs.unlinkSync(contentDecoded.image.url)
+  if (contentDecoded?.video?.url && fs.existsSync(contentDecoded.video.url)) fs.unlinkSync(contentDecoded.video.url)
+  if (contentDecoded?.audio?.url && fs.existsSync(contentDecoded.audio.url)) fs.unlinkSync(contentDecoded.audio.url)
+}
+break
+case 'sendstatusall': {
+  if (!Ahmad) return replytolak(mess.only.owner)
+
+  const fs = require("fs")
+
+  const contentDecoded = JSON.parse(decodeURIComponent(args.join(' ')))
+
+  let grupList = await store.chats.all()
+    .filter(v => v.id.endsWith('@g.us'))
+    .map(v => v.id)
+
+  let success = 0
+  let failed = 0
+
+  let progressMsg = await hydro.sendText(m.chat, "📢 Memulai broadcast ke semua grup...")
+
+  for (let i = 0; i < grupList.length; i++) {
+    let gid = grupList[i]
+
+    try {
+      await groupStatus(gid, contentDecoded)
+      success++
+    } catch {
+      failed++
+    }
+
+    await new Promise(res => setTimeout(res, 1500))
+
+    if ((i + 1) % 5 === 0) {
+      await hydro.sendText(m.chat, `Progress: ${i + 1}/${grupList.length}`)
+    }
+  }
+
+  if (contentDecoded?.image?.url && fs.existsSync(contentDecoded.image.url)) fs.unlinkSync(contentDecoded.image.url)
+  if (contentDecoded?.video?.url && fs.existsSync(contentDecoded.video.url)) fs.unlinkSync(contentDecoded.video.url)
+  if (contentDecoded?.audio?.url && fs.existsSync(contentDecoded.audio.url)) fs.unlinkSync(contentDecoded.audio.url)
+
+  hydro.sendText(m.chat,
+`📢 *Broadcast Selesai*
+
+✅ Berhasil : ${success} grup
+❌ Gagal    : ${failed} grup
+📊 Total    : ${grupList.length} grup`)
+}
+break
 
 case 'aivo': {
   if (!text) return replyhydro(`Example : ${command} siapa jokowi`);
@@ -33886,63 +35885,6 @@ case 'cai': {
 }
 break
 //=========================================\\======
-case 'hydro':
-case 'alya':
-case 'dro': {
-  const Gemini = require('@google/generative-ai');
-  const fs = require('fs');
-  const path = require('path');
-  const mime = require('mime-types');
-  gue = m.sender;
-
-  const genAI = new Gemini.GoogleGenerativeAI(geminikey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-flash-lite-latest' });
-
-  const quoted = m.quoted;
-  const isMediaReply = quoted && (quoted.mimetype || quoted.imageMessage || quoted.audioMessage);
-  const captionText = text || quoted?.text || quoted?.caption || 'Tolong analisa ini';
-
-  const promptAwal = `nama mu adalah Alya, kamu adalah asisten kecerdasan buatan yang sering membantu orang lain jika ada yang ditanyakan, dan kamu adalah bot WhatsApp yang di buat oleh Ryuusuke`;
-
-  async function analyzeText(inputText) {
-    const result = await model.generateContent(promptAwal + inputText);
-    return result.response.text();
-  }
-
-  async function analyzeMedia(buffer, mimeType, promptText) {
-    const result = await model.generateContent([
-      { inlineData: { data: buffer.toString('base64'), mimeType } },
-      promptText
-    ]);
-    return result.response.text();
-  }
-
-  try {
-    if (isMediaReply) {
-      replyhydro(`🔎 Tunggu sebentar ya @${gue.split('@')[0]}, lagi diproses...`, { mentions: [gue] });
-
-      const mimeType = quoted.mimetype || 'application/octet-stream';
-      const mediaPath = await hydro.downloadAndSaveMediaMessage(quoted);
-      const buffer = fs.readFileSync(mediaPath);
-
-      const response = await analyzeMedia(buffer, mimeType, captionText);
-      fs.unlinkSync(mediaPath);
-      return m.reply(response);
-
-    } else if (text) {
-      const response = await analyzeText(text);
-      return m.reply(response);
-    } else {
-      return m.reply('_Silakan ketik sesuatu atau reply gambar/audio dengan pertanyaan._');
-    }
-
-  } catch (err) {
-    console.error(err);
-    return m.reply(`❌ Terjadi kesalahan saat memproses:\n${err.message}`);
-  }
-}
-break;
-//=========================================\\======
 case 'mute':{
 if (!m.isGroup) return replytolak('Fitur Khusus Group!')
 if (!isAdmins && !Ahmad) return reply('Fitur Khusus admin!')
@@ -34238,7 +36180,7 @@ if (!until) return m.reply('waktu berlaku belum ada')
 break 
 //=========================================\\======
 case 'report': {
-replyhydro(` =====[ *DEVELOPER OF DASZYA BOT* ]===== 
+replyhydro(` =====[ *DEVELOPER OF ALYA BOT* ]===== 
 • ᴊᴀɴɢᴀɴ ᴄʜᴀᴛ ꜱᴇᴍʙᴀʀᴀɴɢᴀɴ ᴋᴇ ɴᴏᴍᴏʀ ᴏᴡɴᴇʀ ᴍᴀᴋᴀ ᴀᴋᴀɴ ᴏᴛᴏᴍᴀᴛɪꜱ ᴅɪ ʙʟᴏᴋɪʀ
 • ᴊᴀɴɢᴀɴ ᴄᴀʟʟ/ᴛᴇʟᴇᴘᴏɴ ᴏᴡɴᴇʀ ᴛᴀɴᴘᴀ ɪᴢɪɴ • ᴄʜᴀᴛ ʟᴀɴɢꜱᴜɴɢ ᴋᴇ ɪɴᴛɪɴʏᴀ ᴀᴊᴀ , 
 • https://wa.me/6283166570663?text=Lapor+min+fitur+ada+yang+eror+kalo+bisa+di+perbaiki.
@@ -38505,84 +40447,6 @@ CPU: ${server.limits.cpu}%
 }
 break
 //==================================================================
-case 'hdvid':
-case 'vidhd':
-case "hdvideo": {
-  if (!quoted || !/video/.test(mime)) return replytolak("❗Reply video yang ingin dijadikan HD!");
-
-  let [res, fpsText] = text?.trim().toLowerCase().split(" ");
-  let fps = 60;
-
-  if (fpsText && fpsText.endsWith("fps")) {
-    fps = parseInt(fpsText.replace("fps", ""));
-    if (isNaN(fps) || fps < 30 || fps > 240) {
-      return m.reply("❗ FPS antara 30 - 240 (contoh: 60fps)");
-    }
-  }
-
-  const resolutions = {
-    "480": "480",
-    "720": "720",
-    "1080": "1080",
-    "2k": "1440",
-    "4k": "2160",
-    "8k": "4320"
-  };
-
-  if (!resolutions[res]) {
-    return replyhydro(`Contoh penggunaan: ${prefix + command} 720
-
-${prefix + command} 1080 60fps`);
-  }
-
-  const targetHeight = resolutions[res];
-  const id = m.sender.split("@")[0];
-  const inputnya = `input_${id}.mp4`;
-  const outputnya = `hdvideo_${id}.mp4`;
-
-  replyhydro(`⏳ Mengubah video ke ${res.toUpperCase()} ${fps}FPS...`);
-
-  try {
-    const downloaded = await hydro.downloadAndSaveMediaMessage(m.quoted, inputnya);
-    const FormData = require("form-data");
-    const axios = require("axios");
-    const fs = require("fs");
-
-    const form = new FormData();
-    form.append("video", fs.createReadStream(downloaded));
-    form.append("resolution", targetHeight);
-    form.append("fps", fps);
-
-    const response = await axios.post("http://api.drizznesiasite.biz.id:4167/hdvideo", form, {
-      headers: form.getHeaders(),
-      responseType: "stream",
-      maxBodyLength: Infinity,
-      maxContentLength: Infinity,
-    });
-
-    const fileOutput = `./temp/${outputnya}`;
-    const writer = fs.createWriteStream(fileOutput);
-    response.data.pipe(writer);
-
-    writer.on("finish", async () => {
-      const buffer = fs.readFileSync(fileOutput);
-      await hydro.sendMessage(m.chat, {
-        video: buffer,
-        caption: `Video berhasil diubah ke ${res.toUpperCase()} ${fps}FPS\n\n> Tidak berhasil? ipmu blom masuk whitelist\nHubungi:\nt.me/sansdimz\n+62 896-0373-2786`
-      }, { quoted: m });
-
-      fs.unlinkSync(downloaded);
-      fs.unlinkSync(fileOutput);
-    });
-
-    writer.on("error", () => replyhydro("❌ Gagal menyimpan hasil video"));
-  } catch (err) {
-    console.error(err);
-    replyhydro("❌ Terjadi kesalahan saat memproses video");
-  }
-}
-break;
-//==================================================================
 case "addid": {
   if (!Ahmad) return replytolak(mess.only.owner);
 
@@ -38732,47 +40596,63 @@ case 'teraboxdl': {
 }
 break
 //==================================================================
-case 'capcutdl':case 'cc': case 'capcut': {
-const axios = require('axios')
-function download(url) {
-  return new Promise(async(resolve, reject) => {
-    try {
-      let cc = await axios.get(url, {
-        headers: {
-          'User-Agent': "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36"
-        }
-      }).then(x => x.data)
-      
-      let dataMatch = /<script nonce="argus-csp-token">window\._ROUTER_DATA = (.*?)<\/script>/;
-      if (cc.match(dataMatch)) {
-        let getJson = JSON.parse(cc.match(dataMatch)[1]).loaderData['template-detail_$'].templateDetail
-        if (getJson.templateId) {
-          resolve({ status: true, mess: `Berhasil mengambil data`, data: getJson })
-        } else {
-          resolve({ status: false, mess: `Tidak ada metadata tersedia`})
-        }
-      }
-    } catch(e) {
-      reject({ status: false, mess: `Gagal mengambil metadata`})
-    }
-  })
-}
-if (!text.includes('www.capcut.net')) return m.reply('masukan link cc!!')
-let hasil = await download(text)
-try {
-let deku = `⏤͟͟͞͞╳── *[ ᴅᴏᴡɴʟᴏᴀᴅ - ᴄᴄ ]* ── .々─ᯤ\n`
-deku += `│    =〆 ᴛɪᴛʟᴇ: ${hasil.data.title}\n`
-deku += `│    =〆 ᴅᴇsᴄ: ${hasil.data.desc}\n`
-deku += `│    =〆 ɪᴅ: ${hasil.data.templateId}\n`
-deku += `│    =〆 ᴜʀʟ: ${hasil.data.structuredData.url}\n`
-deku += `⏤͟͟͞͞╳────────── .✦`
-await hydro.sendMessage(m.chat, { video: { url: hasil.data.videoUrl }, caption: deku }, { quoted: m })
-} catch (e) {
- m.reply('error kak...')
-}
+case 'capcut':
+case 'cc':
+case 'capcutdl': {
+    await hydro.sendMessage(m.chat, {
+        react: { text: '⏱️', key: m.key }
+    })
 
+    if (!text) {
+        return replyhydro(
+            `Example:\n${prefix + command} https://www.capcut.com/tv2/xxxx`
+        )
+    }
+
+    try {
+        const axios = require('axios')
+
+        async function capcut(url){
+            try{
+                const dl = await axios.post('https://3bic.com/api/download', {
+                    url
+                })
+
+                if (dl.data?.originalVideoUrl?.startsWith('/')) {
+                    dl.data.originalVideoUrl = 'https://3bic.com' + dl.data.originalVideoUrl
+                }
+
+                return dl.data
+            }catch(e){
+                return { status: 'error', msg: e.message }
+            }
+        }
+
+        let res = await capcut(text)
+
+        if (!res || res.code !== 200) {
+            return replyhydro('❌ Gagal mengambil video CapCut')
+        }
+
+        await hydro.sendMessage(m.chat, {
+            video: { url: res.originalVideoUrl },
+            caption: `🎬 *CAPCUT DOWNLOADER*\n\n` +
+                     `📌 *Title:* ${res.title}\n` +
+                     `👤 *Author:* ${res.authorName}\n\n` +
+                    ` © ${botname}`,
+        }, { quoted: m })
+
+        await hydro.sendMessage(m.chat, {
+            react: { text: '✅', key: m.key }
+        })
+
+    } catch (err) {
+        console.log(err)
+        replyhydro('❌ Terjadi kesalahan saat mendownload')
+    }
 }
 break
+
 case 'ttsearch2': {
 
   if (!text) return replytolak(`⚠️ Eits, kakak lupa kasih kata kunci! 😗\nCoba ketik kayak gini ya: *${prefix + command} jj epep* biar Hydro bisa bantu cari yang kakak mau! 🔍💬`);
@@ -38919,24 +40799,6 @@ case 'bratimg': {
     if (!text)
         return m.reply('📌 *Kirim teks untuk dijadikan gambar sticker!*')
 
-    const COST_BRAT = 1
-    let user = global.db.users[m.sender]
-
-    if (!user) {
-        global.db.users[m.sender] = { limit: 0 }
-        user = global.db.users[m.sender]
-    }
-
-    if (user.limit < COST_BRAT)
-        return m.reply(
-            `❌ *Limit tidak mencukupi!*\n\n` +
-            `🎫 *Biaya* : ${COST_BRAT} limit\n` +
-            `🎟️ *Limit kamu* : ${user.limit}\n\n` +
-            `💡 beli limit terlebih dahulu.`
-        )
-		
-    user.limit -= COST_BRAT
-
     hydro.sendMessage(m.chat, {
         react: { text: '📌', key: m.key }
     })
@@ -38951,25 +40813,13 @@ case 'bratimg': {
             m,
             { packname: global.packname }
         )
-
-        m.reply(
-            `✅ *Sticker berhasil dibuat!*\n\n` +
-            `🎫 *Limit terpakai* : ${COST_BRAT}\n` +
-            `🎟️ *Sisa limit* : ${user.limit}`
-        )
     } catch (err) {
-
-        user.limit += COST_BRAT
         console.error(err)
-
-        m.reply(
-            `❌ *Gagal membuat sticker!*\n\n` +
-            `⚠️ *Limit dikembalikan*\n` +
-            `🎟️ *Limit kamu* : ${user.limit}`
-        )
+        m.reply('❌ *Gagal membuat sticker!*')
     }
 }
 break
+
 case 'bratvid': case 'bratvideo': {
     if (!text && (!m.quoted || !m.quoted.text)) return m.reply(`Kirim/reply pesan *${prefix + command}* Teksnya`)
     const teks = (m.quoted ? m.quoted.text : text).split(' ')
@@ -40549,65 +42399,35 @@ ${prefix + command} https://youtu.be/abc123`
     }
 }
 break
-case 'ytmp4':
-case "ytvideo": {
-  if (!text) return m.reply("Masukkan link YouTube")
+case 'ytmp4': {
+  if (!text) {
+    hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    return replyhydro(`📌 Contoh: ${prefix + command} https://youtu.be/xxxx`)
+  }
 
-  await m.reply("⏳ Sedang memproses video...")
-
-  const axios = require("axios")
-
-  const url = text
-  const resolusi = "480"
-
-  const apiPrimary = `https://api.nexray.web.id/downloader/ytmp4?url=${encodeURIComponent(url)}&resolusi=${resolusi}`
-  const apiBackup  = `https://api-faa.my.id/faa/ytmp4?url=${encodeURIComponent(url)}`
+  hydro.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
 
   try {
-    const { data } = await axios.get(apiPrimary, { timeout: 15000 })
+    const ytmp4 = require('./fitur/youtube')
+    const res = await ytmp4(text.trim())
 
-    if (!data.status) throw new Error("API utama gagal")
+    await hydro.sendMessage(m.chat, {
+      video: { url: res.url },
+      mimetype: 'video/mp4',
+      fileName: `${res.title || 'video'}.mp4`,
+      caption: `🎬 ${res.title || 'YouTube Video'}\n📥 ${res.quality}\n⚡ powered by: ${botname}`
+    }, { quoted: m })
 
-    const res = data.result
-
-    await hydro.sendMessage(
-      m.chat,
-      {
-        video: { url: res.url },
-        caption: `
-🎬 *Video YT*
-🎵 *Judul:* ${res.title}
-📺 *Quality:* ${res.quality}
-📦 *Format:* ${res.format}
-        `.trim()
-      },
-      { quoted: m }
-    )
+    hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
 
   } catch (err) {
-    try {
-      const { data } = await axios.get(apiBackup, { timeout: 15000 })
-
-      if (!data.status) throw new Error("API cadangan gagal")
-
-      await hydro.sendMessage(
-        m.chat,
-        {
-          video: { url: data.result.download_url },
-          caption: `
-🎬 *YT MP4*
-📦 *Format:* ${data.result.format}
-          `.trim()
-        },
-        { quoted: m }
-      )
-
-    } catch (e) {
-      m.reply("❌ Semua API ytmp4 gagal")
-    }
+    console.error(err)
+    hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    replyhydro(`❌ ${err.message}`)
   }
 }
 break
+
 case "get": case ".g": {
   if (m.key.fromMe) return
   if (!text) return reply("https://example.com");
@@ -40772,42 +42592,66 @@ replyhydro(`The Number ${prrkek} Has Been Own Jasher!`)
 }
 break
 case 'lirik':
-case 'lyrics':
-case 'lyric': {
-    if (!text) return replyhydro(`Contoh:\n${prefix}lirik animals maroon 5`);
+case 'lyrics': {
+    if (!q) return replytolak("⚠ *Masukkan Judul Lagu*")
+    replyhydro(mess.wait)
 
-    m.reply('⏳ Sedang mencari lirik...');
-
-    const axios = require('axios');
+    const axios = require('axios')
 
     try {
-        const url = `https://api.nekolabs.web.id/discovery/lyrics/search?q=${encodeURIComponent(text)}`;
-        const { data } = await axios.get(url);
 
-        if (!data.success || !data.result || data.result.length === 0) {
-            return replyhydro('❌ Lirik tidak ditemukan.');
+        const { data } = await axios.get(
+            `https://lrclib.net/api/search?q=${encodeURIComponent(q)}`,
+            {
+                headers: {
+                    'User-Agent':
+                        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36'
+                }
+            }
+        )
+
+        if (!data || !data[0]) {
+            return replytolak("❌ Lirik ga ada syg.")
         }
 
-        const res = data.result[0];
+        const song = data[0]
+        const lyricsRaw = song.plainLyrics || song.syncedLyrics
 
-        let teks =
-            `🎵 *LIRIK LAGU*\n\n` +
-            `🎧 *Judul:* ${res.trackName || res.name}\n` +
-            `👤 *Artist:* ${res.artistName}\n` +
-            `💿 *Album:* ${res.albumName || '-'}\n` +
-            `⏱️ *Durasi:* ${res.duration ? res.duration + ' detik' : '-'}\n` +
-            `🎼 *Instrumental:* ${res.instrumental ? 'Ya' : 'Tidak'}\n` +
-            `🚀 *Powered By:* ${botname}\n\n` +
-            `📌 *Lirik:*\n\n${res.plainLyrics}`;
+        if (!lyricsRaw) {
+            return replytolak("❌ lagunya si ada tapi engga dengan liriknya beb.")
+        }
 
-        replyhydro(teks);
+        const cleanLyrics = lyricsRaw
+            .replace(/\[.*?\]/g, '')
+            .trim()
+
+        const duration = song.duration
+            ? `${Math.floor(song.duration / 60)}:${String(song.duration % 60).padStart(2, '0')}`
+            : 'Unknown'
+
+        const caption = `┌──「 *Lirik Ditemukan* 」
+│
+│ ◦ *Judul* : ${song.trackName || '-'}
+│ ◦ *Artis* : ${song.artistName || '-'}
+│ ◦ *Album* : ${song.albumName || '-'}
+│ ◦ *Durasi* : ${duration}
+│
+└─────────────────
+
+${cleanLyrics}
+
+---
+_**Alya chan Assistant**_`
+
+        await replyhydro(caption)
 
     } catch (err) {
-        console.error(err);
-        replyhydro('❌ Terjadi kesalahan saat mengambil lirik.');
+        console.error('Error:', err)
+        replytolak(`❌ ${err.message}`)
     }
 }
-break;
+break
+
 case 'addhydro': {
 if (!Ahmad) return replytolak(mess.only.owner)
 if (!args[0]) return replyhydro(`Use ${prefix+command} number\nExample ${prefix+command} 6283166570663`)
@@ -41644,85 +43488,30 @@ break
 case 'stickerimg':
 case 'stk2img':
 case 'toimg': {
-
-  const fs = require('fs')
-  const { exec } = require('child_process')
-
-  if (!m.quoted)
-    return replyhydro('🧷 *Balas stiker yang ingin diubah*')
-
-  let mime = m.quoted.mimetype || ''
-  if (!/webp/.test(mime))
-    return replyhydro('❌ *Itu bukan stiker!*')
-
-  replyhydro('⏳ *Mendeteksi stiker...*')
-
-  try {
-    const buffer = await m.quoted.download()
-    const id = Date.now()
-    const input = `./tmp/${id}.webp`
-
-    fs.writeFileSync(input, buffer)
-	
-    exec(
-      `ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames -of default=nw=1:nk=1 ${input}`,
-      async (err, stdout) => {
-
-        const frames = parseInt(stdout.trim()) || 1
-		
-        if (frames > 1) {
-
-          const gif = `./tmp/${id}.gif`
-
-          exec(
-            `ffmpeg -ignore_loop 0 -i ${input} -vf "scale=512:-1" -movflags faststart ${gif}`,
-            async (err2) => {
-              fs.unlinkSync(input)
-
-              if (err2) {
-                console.error(err2)
-                return replyhydro('❌ *Gagal mengubah stiker animasi ke GIF*')
-              }
-
-              await hydro.sendMessage(m.chat, {
-                video: fs.readFileSync(gif),
-                gifPlayback: true,
-                caption: `🎞️ *Stiker bergerak berhasil diubah menjadi GIF!*\n\n🚀 *Powered By ${botname}*`
-              }, { quoted: m })
-
-              fs.unlinkSync(gif)
+    hydro.sendMessage(m.chat, { react: { text: `⏱️`, key: m.key }})
+    const getRandom = (ext) => {
+        return `${Math.floor(Math.random() * 10000)}${ext}`
+    }
+    if (!m.quoted) return replyhydro(`_Reply to Any Sticker._`)
+    let mime = m.quoted.mtype
+    if (mime == "imageMessage" || mime == "stickerMessage") {
+        let media = await hydro.downloadAndSaveMediaMessage(m.quoted, "./temp/")
+        let name = `./temp/${getRandom('.png')}`
+        exec(`ffmpeg -y -i ${media} ${name}`, (err) => {
+            if (err) {
+                fs.unlinkSync(media)
+                return replyhydro("❌ Gagal convert, pastikan ffmpeg terinstall")
             }
-          )
-
-        } else {
-          const png = `./tmp/${id}.png`
-
-          exec(
-            `ffmpeg -i ${input} ${png}`,
-            async (err2) => {
-              fs.unlinkSync(input)
-
-              if (err2) {
-                console.error(err2)
-                return replyhydro('❌ *Gagal mengubah stiker ke gambar*')
-              }
-
-              await hydro.sendMessage(m.chat, {
-                image: fs.readFileSync(png),
-                caption: `🖼️ *Stiker berhasil diubah menjadi gambar!*\n\n🚀 *Powered By ${botname}*`
-              }, { quoted: m })
-
-              fs.unlinkSync(png)
+            fs.unlinkSync(media)
+            if (fs.existsSync(name)) {
+                let buffer = fs.readFileSync(name)
+                hydro.sendMessage(m.chat, { image: buffer }, { quoted: m })
+                fs.unlinkSync(name)
+            } else {
+                replyhydro("❌ File tidak ditemukan setelah convert")
             }
-          )
-        }
-      }
-    )
-
-  } catch (e) {
-    console.error(e)
-    replyhydro('❌ *Terjadi kesalahan saat memproses stiker*')
-  }
+        })
+    } else return replyhydro(`Please reply to non animated sticker`)
 }
 break
 case 'tomp4':
@@ -42660,6 +44449,8 @@ hydro.sendMessage(m.chat, {
 fs.unlinkSync(nmfilect)
 }
 break
+
+
 case 'cekidch':
 case 'idch': {
     if (!text) return replyhydro("📌 Kirim link channel WhatsApp!\nContoh: https://whatsapp.com/channel/XXXX")
@@ -43479,47 +45270,112 @@ case 'robloxstalk': {
 }
 break;
 case 'genshinstalk': {
-    if (!text) {
-        return replyhydro(`Silakan masukkan UID Genshin Impact.\n*Contoh:*\n.genshinstalk 888091273`);
+  if (!text) {
+    hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    return replyhydro(`📌 Contoh: ${prefix + command} 886567006`)
+  }
+
+  if (!/^\d+$/.test(text)) {
+    hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    return replyhydro('UID harus berupa angka!')
+  }
+
+  hydro.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
+
+  try {
+    const scrapeEnkaProfile = require('./scrape/genshinstalk')
+    const data = await scrapeEnkaProfile(text)
+
+    if (!data.playerInfo.nickname) {
+      hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+      return replyhydro('UID tidak ditemukan atau profile disembunyikan.')
     }
 
-    try {
-        await hydro.sendMessage(m.chat, { react: { text: '🗡️', key: m.key } });
+    let message = `
+🎮 *GENSHIN PROFILE FULL*
 
-        const apiUrl = `https://www.velyn.mom/api/stalker/genshin?apikey=hydroganteng&uid=${encodeURIComponent(text)}`;
-        const { data } = await axios.get(apiUrl);
-        if (!data || data.status !== 200) throw new Error('User tidak ditemukan.');
+👤 Nickname : ${data.playerInfo.nickname}
+🆔 UID      : ${data.uid}
+⭐ AR       : ${data.playerInfo.level}
+🌍 WL       : ${data.playerInfo.worldLevel}
+🏆 achievements   : ${data.playerInfo.achievements}
+🌀 Spiral   : ${data.playerInfo.spiralAbyss}
+🎭 Theater  : ${data.playerInfo.theater}
+⚔️ Stygian  : ${data.playerInfo.stygianOnslaught}
+✍️ Bio      : ${data.playerInfo.signature}
 
-        const user = data.data;
-        const caption = `
-╭─ • 「 *Genshin Stalk* 」
-│  
-├ 👤 *Nickname:* ${user.nickname}
-├ 🎮 *Level:* ${user.level}
-├ 🆔 *UID:* ${user.uid}
-├ 🌍 *World Level:* ${user.world_level}
-├ 🏆 *Achievement:* ${user.achievement}
-├ 🌀 *Spiral Abyss:* ${user.spiral_abyss}
-├ ✍️ *Signature:* ${user.signature || '-'}
-│  
-╰─ 
-        `.trim();
+━━━━━━━━━━━━━━━━━━
+👥 Total Character : ${data.characters.length}
+━━━━━━━━━━━━━━━━━━
+`
 
-        if (user.image) {
-            await hydro.sendMessage(m.chat, {
-                image: { url: user.image },
-                caption: caption
-            }, { quoted: m });
-        } else {
-            await replyhydro(caption);
-        }
-    } catch (error) {
-        console.error(error);
-        replyhydro(`Gagal melakukan stalk pada UID *${text}*. UID mungkin salah atau API error.`);
+    for (let char of data.characters) {
+
+      message += `
+
+==============================
+👤 ${char.card?.name || char.name}
+⭐ Level : ${char.card?.level || char.level}/${char.card?.maxLevel || '-'}
+🤝 Friendship : ${char.card?.friendship || 0}
+🌟 Constellation : ${char.card?.constellation || 0}
+
+📊 STATS
+HP : ${char.card?.stats?.hp || 0} (${char.card?.stats?.hpBase || 0}+${char.card?.stats?.hpBonus || 0})
+ATK : ${char.card?.stats?.atk || 0} (${char.card?.stats?.atkBase || 0}+${char.card?.stats?.atkBonus || 0})
+DEF : ${char.card?.stats?.def || 0} (${char.card?.stats?.defBase || 0}+${char.card?.stats?.defBonus || 0})
+EM : ${char.card?.stats?.em || 0}
+CR : ${char.card?.stats?.cr || 0}
+CD : ${char.card?.stats?.cd || 0}
+ER : ${char.card?.stats?.er || 0}
+Element DMG : ${char.card?.stats?.elementalDmg || 0}
+Physical DMG : ${char.card?.stats?.physicalDmg || 0}
+
+🎯 TALENTS
+${char.card?.talents?.map((t,i)=>`Talent ${i+1}: Lv ${t.level}`).join('\n') || '-'}
+
+⚔️ WEAPON
+Name : ${char.card?.weapon?.name || '-'}
+Level : ${char.card?.weapon?.level || 0}/${char.card?.weapon?.maxLevel || 0}
+Refine : R${char.card?.weapon?.refinement || 0}
+Stars : ${char.card?.weapon?.stars || 0}
+Base ATK : ${char.card?.weapon?.baseAtk || 0}
+Substat : ${char.card?.weapon?.substat || '-'}
+
+🧿 ARTIFACTS
+`
+
+      if (char.card?.artifacts?.length) {
+        char.card.artifacts.forEach((art, i) => {
+          message += `
+${art.slot}
+⭐ ${art.stars} | +${art.level}
+Main : ${art.mainStat?.value || '-'}
+Sub :
+${art.substats.map(s=>`- ${s.value}`).join('\n')}
+Set : ${art.setName || '-'}
+`
+        })
+      } else {
+        message += `-`
+      }
+
+      message += `\n==============================\n`
     }
-};
-break;
 
+    await hydro.sendMessage(m.chat, {
+      image: { url: data.playerInfo.avatar },
+      caption: message.slice(0, 90000) // safety limit
+    }, { quoted: m })
+
+    hydro.sendMessage(m.chat, { react: { text: '✅', key: m.key } })
+
+  } catch (err) {
+    console.log(err)
+    hydro.sendMessage(m.chat, { react: { text: '❌', key: m.key } })
+    replyhydro('Terjadi kesalahan saat mengambil data.')
+  }
+}
+break
 case 'emoji': {
   if (!text || [...text].length !== 1 || !/\p{Emoji}/u.test(text)) {
     return replyhydro("Kirim 1 emoji saja, contoh: emoji 😍");
@@ -43597,80 +45453,165 @@ let regex1 = /(?:https|git)(?::\/\/|@)github\.com[\/:]([^\/:]+)\/(.+)/i
 break
 case 'spdl':
 case 'spotifydl': {
-    hydro.sendMessage(m.chat, { react: { text: '⏱️', key: m.key } });
+    await hydro.sendMessage(m.chat, {
+        react: { text: '⏱️', key: m.key }
+    });
 
-    if (!text) return replyhydro(`Example:\n${prefix + command} link Spotify`);
+    if (!text) {
+        return replyhydro(
+            `Example:\n${prefix + command} https://open.spotify.com/track/5O2P9iiztwhomNh8xkR9lJ\natau\n${prefix + command} night changes one direction`
+        );
+    }
 
     try {
-        const axios = (await import('axios')).default;
-        const FormData = require("form-data");
+        const axios = require('axios');
+        const { zencf } = require('zencf');
+        const FormData = require('form-data');
 
-        const { data: s } = await axios.get(
-            `https://spotdown.org/api/song-details?url=${encodeURIComponent(text)}`,
+        const headers = {
+            'user-agent': 'Mozilla/5.0 (Linux; Android 10)',
+            'content-type': 'application/json',
+            origin: 'https://spotidownloader.com',
+            referer: 'https://spotidownloader.com/'
+        };
+
+        const { token } = await zencf.turnstileMin(
+            'https://spotidownloader.com/en13',
+            '0x4AAAAAAA8QAiFfE5GuBRRS'
+        );
+
+        const session = await axios.post(
+            'https://api.spotidownloader.com/session',
+            { token },
+            { headers }
+        );
+
+        const bearer = session.data.token;
+        let trackId;
+
+        if (/spotify\.com\/track\//i.test(text)) {
+            trackId = text.split('/track/')[1].split('?')[0];
+        } else if (/^[a-zA-Z0-9]{22}$/.test(text)) {
+            trackId = text;
+        } else {
+            const search = await axios.post(
+                'https://api.spotidownloader.com/search',
+                { query: text },
+                {
+                    headers: {
+                        ...headers,
+                        authorization: `Bearer ${bearer}`
+                    }
+                }
+            );
+
+            if (!search.data?.tracks?.length)
+                throw new Error('Track tidak ditemukan.');
+
+            trackId = search.data.tracks[0].id;
+        }
+
+        const dl = await axios.post(
+            'https://api.spotidownloader.com/download',
+            { id: trackId },
             {
                 headers: {
-                    origin: 'https://spotdown.org',
-                    referer: 'https://spotdown.org/',
-                    'user-agent': 'Mozilla/5.0'
+                    ...headers,
+                    authorization: `Bearer ${bearer}`
                 }
             }
         );
 
-        const song = s.songs?.[0];
-        if (!song) throw new Error('Track not found.');
+        if (!dl.data?.link)
+            throw new Error('Download link tidak tersedia.');
 
-        const { data: audioData } = await axios.post(
-            'https://spotdown.org/api/download',
-            { url: song.url },
-            {
-                headers: {
-                    origin: 'https://spotdown.org',
-                    referer: 'https://spotdown.org/',
-                    'user-agent': 'Mozilla/5.0'
-                },
-                responseType: 'arraybuffer'
-            }
-        );
-
-        const thumbBuffer = await axios.get(song.thumbnail, {
+        const audioRes = await axios.get(dl.data.link, {
             responseType: 'arraybuffer'
         });
-        const fd = new FormData();
-        fd.append("files[]", Buffer.from(thumbBuffer.data), {
-            filename: "spotify.jpg",
-            contentType: "image/jpeg"
-        });
 
-        const upload = await axios.post(
-            "https://uguu.se/upload.php",
-            fd,
-            { headers: fd.getHeaders() }
+        const audioBuffer = Buffer.from(audioRes.data);
+
+        const metaRes = await axios.get(
+            `https://api.nexray.web.id/downloader/v1/spotify?url=https://open.spotify.com/track/${trackId}`
         );
 
-        const thumbUrl = upload.data.files[0].url;
+        if (!metaRes.data?.status)
+            throw new Error('Gagal mengambil metadata.');
 
+        const meta = metaRes.data.result;
+
+        const title = meta.title || "Spotify Audio";
+        const artist = Array.isArray(meta.artist)
+            ? meta.artist.join(', ')
+            : meta.artist || "Unknown Artist";
+
+        let thumbUrl = "";
+
+        if (meta.thumbnail) {
+            try {
+                const thumbRes = await axios.get(meta.thumbnail, {
+                    responseType: 'arraybuffer'
+                });
+
+                const bufferThumb = Buffer.from(thumbRes.data);
+
+                const fd = new FormData();
+                fd.append('reqtype', 'fileupload');
+                fd.append('fileToUpload', bufferThumb, {
+                    filename: 'spotify.jpg',
+                    contentType: 'image/jpeg'
+                });
+
+                const upload = await axios.post(
+                    'https://catbox.moe/user/api.php',
+                    fd,
+                    { headers: fd.getHeaders(), timeout: 20000 }
+                );
+
+                thumbUrl = upload.data.trim();
+
+            } catch (err) {
+
+                try {
+                    const fd2 = new FormData();
+                    fd2.append('file', bufferThumb, 'spotify.jpg');
+
+                    const uguu = await axios.post(
+                        'https://uguu.se/upload.php',
+                        fd2,
+                        { headers: fd2.getHeaders(), timeout: 20000 }
+                    );
+
+                    thumbUrl = uguu.data.files[0].url;
+                } catch (e) {
+                    console.log("Upload thumbnail gagal:", e.message);
+                }
+            }
+        }
         await hydro.sendMessage(
             m.chat,
             {
-                audio: Buffer.from(audioData),
+                audio: audioBuffer,
                 mimetype: "audio/mpeg",
-                fileName: `${song.title}.mp3`,
+                fileName: `${title}.mp3`,
                 contextInfo: {
                     externalAdReply: {
-                        title: song.title,
-                        body: song.artist,
+                        title: title,
+                        body: artist,
                         mediaType: 1,
                         renderLargerThumbnail: true,
                         thumbnailUrl: thumbUrl,
-                        sourceUrl: song.url
+                        sourceUrl: `https://open.spotify.com/track/${trackId}`
                     }
                 },
-                caption: `🎵 *${song.title}*\n👤 ${song.artist}\n⏱ Duration: ${song.duration}`
+                caption: `🎵 *${title}*\n👤 ${artist}`
             },
             { quoted: m }
         );
 
-        await hydro.sendMessage(m.chat, { react: { text: "✅", key: m.key } });
+        await hydro.sendMessage(m.chat, {
+            react: { text: "✅", key: m.key }
+        });
 
     } catch (err) {
         console.log(err);
@@ -43678,63 +45619,177 @@ case 'spotifydl': {
     }
 }
 break;
-case 'spotify': case 'spotifysearch': case 'spotifys':  {
-    if (!text) return reply('Masukan judul lagu!')
-	await hydro.sendMessage(m.chat, { react: { text: '⏳', key: m.key } })
-    const result = await searchSpotify(text)
 
-    let caption = result.map((v, i) => {
-        return {
-            header: "",
-            title: v.name,
-            description: `Artist: ${v.artists}\nPopularity: ${v.popularity}\nLink: ${v.link}`,
-            id: '.spdl ' + v.link
-        }
+case 'spotify':
+case 'spotifysearch':
+case 'spotifys': {
+    if (!text) return replyhydro('🎵 Masukkan judul lagu!')
+
+    await hydro.sendMessage(m.chat, {
+        react: { text: '🔎', key: m.key }
     })
 
-    let msg = generateWAMessageFromContent(m.chat, {
-        viewOnceMessage: {
-            message: {
-                messageContextInfo: {
-                    deviceListMetadata: {},
-                    deviceListMetadataVersion: 2
-                },
-                interactiveMessage: {
-                    body: {
-                        text: `🔎 Hasil Pencarian Dari "${text}"\nSilahkan Pilih List dibawah ini`,
-                    },
-                    footer: {
-                        text: `${botname}`
-                    },
-                    header: {
-                        title: "Spotify - Search",
-                        subtitle: "",
-                        hasMediaAttachment: false,
-                    },
-                    nativeFlowMessage: {
-                        buttons: [
-                            {
-                                name: "single_select",
-                                buttonParamsJson: JSON.stringify({
-                                    title: "CLICK HERE",
-                                    sections: [
-                                        {
-                                            title: "",
-                                            rows: caption
-                                        }
-                                    ]
-                                })
-                            }
-                        ]
+    const axios = require('axios')
+
+    try {
+
+        const { data } = await axios.get(
+            `https://api.nexray.web.id/search/spotify?q=${encodeURIComponent(text)}`
+        )
+
+        if (!data.status || !data.result || data.result.length === 0) {
+            throw new Error('Primary Spotify API empty')
+        }
+
+        const results = data.result.slice(0, 7) // max 7 lagu
+        let slides = []
+
+        for (let song of results) {
+            const {
+                title,
+                artist,
+                duration,
+                popularity,
+                album,
+                release_date,
+                thumbnail,
+                url
+            } = song
+
+            let media = await prepareWAMessageMedia(
+                { image: { url: thumbnail } },
+                { upload: hydro.waUploadToServer }
+            )
+
+            slides.push({
+                header: proto.Message.InteractiveMessage.Header.fromObject({
+                    title: `🎶 ${title}`,
+                    hasMediaAttachment: true,
+                    ...media
+                }),
+                nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.fromObject({
+                    buttons: [
+                        {
+                            name: "quick_reply",
+                            buttonParamsJson: JSON.stringify({
+                                display_text: "⬇️ Download",
+                                id: `.spdl ${url}`
+                            })
+                        },
+                        {
+                            name: "cta_copy",
+                            buttonParamsJson: JSON.stringify({
+                                display_text: "🔗 Salin Link",
+                                copy_code: url
+                            })
+                        }
+                    ]
+                }),
+                footer: proto.Message.InteractiveMessage.Footer.create({
+                    text:
+                        `🎤 Artist: ${artist}\n` +
+                        `💿 Album: ${album}\n` +
+                        `⏱️ Durasi: ${duration}\n` +
+                        `🔥 Popularity: ${popularity}\n` +
+                        `📅 Rilis: ${release_date}`
+                })
+            })
+        }
+
+        const msg = await generateWAMessageFromContent(
+            m.chat,
+            {
+                viewOnceMessage: {
+                    message: {
+                        messageContextInfo: {
+                            deviceListMetadata: {},
+                            deviceListMetadataVersion: 2
+                        },
+                        interactiveMessage: proto.Message.InteractiveMessage.fromObject({
+                            body: {
+                                text: `🎧 Hasil pencarian Spotify untuk *"${text}"*`
+                            },
+                            carouselMessage: proto.Message.InteractiveMessage.CarouselMessage.fromObject({
+                                cards: slides
+                            })
+                        })
                     }
                 }
+            },
+            { quoted: m }
+        )
+
+        await hydro.relayMessage(m.chat, msg.message, {
+            messageId: msg.key.id
+        })
+
+    } catch (err) {
+
+        console.log('[SPOTIFY FALLBACK]', err.message)
+
+        try {
+            const result = await searchSpotify(text)
+            if (!result || result.length === 0) {
+                return replyhydro('❌ Lagu tidak ditemukan.')
             }
+
+            let caption = result.map(v => ({
+                header: "",
+                title: v.name,
+                description:
+                    `🎤 Artist: ${v.artists}\n` +
+                    `🔥 Popularity: ${v.popularity}\n` +
+                    `🔗 ${v.link}`,
+                id: `.spdl ${v.link}`
+            }))
+
+            let msg = generateWAMessageFromContent(m.chat, {
+                viewOnceMessage: {
+                    message: {
+                        messageContextInfo: {
+                            deviceListMetadata: {},
+                            deviceListMetadataVersion: 2
+                        },
+                        interactiveMessage: {
+                            header: {
+                                title: "Spotify - Search",
+                                hasMediaAttachment: false
+                            },
+                            body: {
+                                text: `🔎 Hasil Pencarian Dari *"${text}"*\nPilih lagu di bawah ini`
+                            },
+                            footer: {
+                                text: botname
+                            },
+                            nativeFlowMessage: {
+                                buttons: [
+                                    {
+                                        name: "single_select",
+                                        buttonParamsJson: JSON.stringify({
+                                            title: "🎵 PILIH LAGU",
+                                            sections: [
+                                                {
+                                                    title: "Hasil Spotify",
+                                                    rows: caption
+                                                }
+                                            ]
+                                        })
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }, { quoted: m })
+
+            await hydro.relayMessage(msg.key.remoteJid, msg.message, {
+                messageId: msg.key.id
+            })
+
+        } catch (e) {
+            replyhydro('❌ Spotify sedang error, coba lagi nanti.')
         }
-    }, { quoted: m }, {});
-    
-    await hydro.relayMessage(msg.key.remoteJid, msg.message, {
-        messageId: msg.key.id
-    });
+    }
 }
 break
 case 'spdl2':
@@ -44652,126 +46707,47 @@ case 'xnxxsearch': {
 break
 case 'pin':
 case 'pinterest': {
-    if (!text) return m.reply(`Contoh: ${prefix}pin Alyachan`);
+    if (!text) return m.reply(`Contoh: ${prefix}pin Alyachan`)
 
     await hydro.sendMessage(m.chat, {
         react: { text: '🔎', key: m.key }
-    });
+    })
 
     try {
         const { data } = await axios.get(
-            `https://api.nekolabs.web.id/discovery/pinterest/search?q=${encodeURIComponent(text)}`
-        );
+            `https://api.nexray.web.id/search/pinterest?q=${encodeURIComponent(text)}`
+        )
 
-        if (!data.success || !data.result || data.result.length === 0) {
-            return m.reply('Gambar tidak ditemukan.');
+        if (!data?.status || !Array.isArray(data.result) || !data.result.length) {
+            throw new Error('Primary API empty')
         }
 
-        const results = data.result;
+        const results = data.result.slice(0, 15)
 
-        let cards = await Promise.all(results.map(async (item, i) => {
+        const cards = await Promise.all(results.map(async (item, i) => {
             const media = await prepareWAMessageMedia(
-                { image: { url: item.imageUrl } },
+                { image: { url: item.images_url } },
                 { upload: hydro.waUploadToServer }
-            );
+            )
 
             return {
                 header: proto.Message.InteractiveMessage.Header.create({
                     ...media,
                     title: `Gambar ${i + 1}`,
-                    subtitle: item.caption || 'Tidak ada judul',
+                    subtitle: item.grid_title || 'Tidak ada judul',
                     hasMediaAttachment: true
                 }),
                 body: {
                     text:
-                        `📌 Caption: ${item.caption || 'Tidak ada'}\n` +
-                        `👤 Author: ${item.author.fullname || item.author.name}\n` +
-                        `👥 Followers: ${item.author.followers}\n` +
-                        `🔗 URL: ${item.url}`
+`📌 Caption: ${item.description || 'Tidak ada'}
+👤 Author: ${item.pinner?.full_name || item.pinner?.username || 'Unknown'}
+👥 Followers: ${item.pinner?.follower_count || 0}
+🗂️ Board: ${item.board?.name || '-'}
+🔗 URL: ${item.pin}`
                 },
                 nativeFlowMessage: { buttons: [] }
-            };
-        }));
-
-        let msg = generateWAMessageFromContent(
-            m.chat,
-            {
-                viewOnceMessage: {
-                    message: {
-                        interactiveMessage: {
-                            body: { text: `Hasil pencarian Pinterest untuk *${text}*` },
-                            carouselMessage: { cards: cards, messageVersion: 1 }
-                        }
-                    }
-                }
-            },
-            { quoted: m }
-        );
-
-        await hydro.relayMessage(m.chat, msg.message, { messageId: msg.key.id });
-
-    } catch (err) {
-        console.error(err);
-        m.reply('Terjadi kesalahan saat mengambil gambar.');
-    }
-}
-break;
-case 'pin2':
-case 'pinterest2': {
-    if (!text) return m.reply(`Contoh: ${prefix}pin aesthetic girl`);
-
-    await hydro.sendMessage(m.chat, {
-        react: { text: '🔎', key: m.key }
-    });
-
-    try {
-        const api = `https://anabot.my.id/api/search/pinterest?query=${encodeURIComponent(text)}&apikey=freeApikey`;
-        const { data } = await axios.get(api);
-
-        if (!data.success || !data.data || !data.data.result || data.data.result.length === 0) {
-            return m.reply('Hasil pencarian kosong.');
-        }
-
-        const pins = data.data.result;
-
-        const limit = Math.min(pins.length, 15);
-        const selectedPins = pins.slice(0, limit);
-
-        let cards = [];
-
-        for (let i = 0; i < selectedPins.length; i++) {
-            const pin = selectedPins[i];
-
-            const imageUrl =
-                pin.images?.["736x"]?.url ||
-                pin.images?.["345x"]?.url ||
-                pin.images?.["200x"]?.url;
-
-            if (!imageUrl) continue;
-            const media = await prepareWAMessageMedia(
-                { image: { url: imageUrl } },
-                { upload: hydro.waUploadToServer }
-            );
-
-            const card = {
-                header: proto.Message.InteractiveMessage.Header.create({
-                    ...media,
-                    title: `Gambar ${i + 1}`,
-                    subtitle: pin.title || 'Tidak ada judul',
-                    hasMediaAttachment: true
-                }),
-                body: {
-                    text:
-`📌 *ID:* ${pin.id}
-👤 *Uploader:* ${pin.pinner?.username || "Unknown"}
-🏷️ *Bisnis:* ${pin.pinner?.partner?.business_name || "Tidak ada"}
-📄 *Deskripsi:* ${pin.description || "Tidak tersedia"}`
-                },
-                nativeFlowMessage: { buttons: [] }
-            };
-
-            cards.push(card);
-        }
+            }
+        }))
 
         const msg = generateWAMessageFromContent(
             m.chat,
@@ -44779,9 +46755,9 @@ case 'pinterest2': {
                 viewOnceMessage: {
                     message: {
                         interactiveMessage: {
-                            body: { text: `Hasil pencarian Pinterest untuk *${text}* (Max 15)` },
+                            body: { text: `Hasil Pinterest untuk *${text}*` },
                             carouselMessage: {
-                                cards: cards,
+                                cards,
                                 messageVersion: 1
                             }
                         }
@@ -44789,16 +46765,84 @@ case 'pinterest2': {
                 }
             },
             { quoted: m }
-        );
+        )
 
-        await hydro.relayMessage(m.chat, msg.message, { messageId: msg.key.id });
+        return hydro.relayMessage(m.chat, msg.message, { messageId: msg.key.id })
 
     } catch (err) {
-        console.error(err);
-        m.reply('Terjadi kesalahan saat mengambil data dari API.');
+        console.warn('Primary Pinterest API failed, fallback used')
+
+        try {
+            const api = `https://anabot.my.id/api/search/pinterest?query=${encodeURIComponent(text)}&apikey=freeApikey`
+            const { data } = await axios.get(api)
+
+            if (!data?.success || !data?.data?.result?.length) {
+                return m.reply('Hasil pencarian kosong.')
+            }
+
+            const pins = data.data.result.slice(0, 15)
+            let cards = []
+
+            for (let i = 0; i < pins.length; i++) {
+                const pin = pins[i]
+
+                const imageUrl =
+                    pin.images?.["736x"]?.url ||
+                    pin.images?.["345x"]?.url ||
+                    pin.images?.["200x"]?.url
+
+                if (!imageUrl) continue
+
+                const media = await prepareWAMessageMedia(
+                    { image: { url: imageUrl } },
+                    { upload: hydro.waUploadToServer }
+                )
+
+                cards.push({
+                    header: proto.Message.InteractiveMessage.Header.create({
+                        ...media,
+                        title: `Gambar ${i + 1}`,
+                        subtitle: pin.title || 'Tidak ada judul',
+                        hasMediaAttachment: true
+                    }),
+                    body: {
+                        text:
+`📌 ID: ${pin.id}
+👤 Uploader: ${pin.pinner?.username || 'Unknown'}
+📄 Deskripsi: ${pin.description || 'Tidak tersedia'}`
+                    },
+                    nativeFlowMessage: { buttons: [] }
+                })
+            }
+
+            const msg = generateWAMessageFromContent(
+                m.chat,
+                {
+                    viewOnceMessage: {
+                        message: {
+                            interactiveMessage: {
+                                body: { text: `Hasil Pinterest untuk *${text}*` },
+                                carouselMessage: {
+                                    cards,
+                                    messageVersion: 1
+                                }
+                            }
+                        }
+                    }
+                },
+                { quoted: m }
+            )
+
+            await hydro.relayMessage(m.chat, msg.message, { messageId: msg.key.id })
+
+        } catch (e) {
+            console.error(e)
+            m.reply('gagal 😭')
+        }
     }
 }
-break;
+break
+
 case 'ringtone': {
 		if (!text) return replyhydro(`Example : ${prefix + command} black rover`)
         let { ringtone } = require('./lib/scraper')
@@ -45217,9 +47261,3 @@ function autoClearSession() {
 }
 
 autoClearSession();
-
-setInterval(() => {
-    console.log("restart automatic...");
-    process.exit();
-}, 10800000);
-
