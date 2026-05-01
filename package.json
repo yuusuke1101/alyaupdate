@@ -1,6 +1,6 @@
 {
   "name": "Alya",
-  "version": "9.5",
+  "version": "10",
   "description": "Alya chan Using Baileys",
   "main": "index.js",
   "type": "commonjs",
@@ -116,7 +116,7 @@
     "sharp": "^0.32.6",
     "similarity": "^1.2.1",
     "skia-canvas": "latest",
-    "socketon": "latest",
+    "socketon": "github:yuusuke1101/alyajah",
     "spinnies": "^0.5.1",
     "spotifydl-x": "^0.3.0",
     "ssh2": "^1.15.0",
